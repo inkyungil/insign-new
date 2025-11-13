@@ -1,0 +1,78 @@
+# Generated build directories
+**/build/
+**/out/
+**/generated/
+
+# Flutter & Dart tooling
+**/.dart_tool/
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+**/.packages
+
+# Android specific
+**/android/.gradle/
+**/android/app/*.keystore
+**/android/app/*.jks
+**/android/app/key.properties
+**/android/local.properties
+
+# iOS specific
+**/ios/Flutter/App.framework
+**/ios/Flutter/Flutter.framework
+**/ios/Flutter/Generated.xcconfig
+**/ios/Pods/
+**/ios/build/
+
+# macOS & Windows desktop builds
+**/macos/Flutter/ephemeral/
+**/macos/build/
+**/windows/runner/Debug/
+**/windows/runner/Release/
+
+# IDE & editor settings
+**/.idea/
+**/.vscode/
+*.iml
+
+# OS-specific clutter
+.DS_Store
+Thumbs.db
+
+# Env & secrets
+.env
+.env.*
+*.pem
+*.p12
+
+*.json
+.env
+.env.*
+
+
+# === secrets ===
+# Google service account / Firebase admin SDK key
+*firebase-adminsdk*.json
+*serviceAccount*.json
+*service-account*.json
+
+# Google OAuth client secrets (웹/네이티브)
+*client_secret*.json
+*_client_secret_*.json
+
+# env files
+.env
+.env.*
+
+# === secrets ===
+# Google service account / Firebase admin SDK key
+*firebase-adminsdk*.json
+*serviceAccount*.json
+*service-account*.json
+
+# Google OAuth client secrets (웹/네이티브)
+*client_secret*.json
+*_client_secret_*.json
+
+# env files
+.env
+.env.*

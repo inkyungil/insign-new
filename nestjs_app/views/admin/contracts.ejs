@@ -1,0 +1,342 @@
+<% const activePage = 'contracts'; %>
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>계약 관리</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.15.4/css/all.min.css" crossorigin="anonymous" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/overlayscrollbars@1.13.1/css/OverlayScrollbars.min.css" crossorigin="anonymous" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/css/adminlte.min.css" crossorigin="anonymous" />
+  </head>
+  <body class="hold-transition sidebar-mini">
+    <div class="wrapper">
+      <nav class="main-header navbar navbar-expand navbar-white navbar-light">
+        <ul class="navbar-nav">
+          <li class="nav-item">
+            <a class="nav-link" data-widget="pushmenu" href="#" role="button"><i class="fas fa-bars"></i></a>
+          </li>
+          <li class="nav-item d-none d-sm-inline-block">
+            <a href="/adm/dashboard" class="nav-link">대시보드</a>
+          </li>
+          <li class="nav-item d-none d-sm-inline-block">
+            <a href="/adm/list" class="nav-link">관리자 계정</a>
+          </li>
+          <li class="nav-item d-none d-sm-inline-block">
+            <a href="/adm/users" class="nav-link">가입자 관리</a>
+          </li>
+          <li class="nav-item d-none d-sm-inline-block">
+            <a href="/adm/contracts" class="nav-link active">계약 관리</a>
+          </li>
+          <li class="nav-item d-none d-sm-inline-block">
+            <a href="/adm/templates" class="nav-link">템플릿 관리</a>
+          </li>
+          <li class="nav-item d-none d-sm-inline-block">
+            <a href="/adm/policies" class="nav-link <%= activePage === 'policies' ? 'active' : '' %>">약관/정책</a>
+          </li>
+          <li class="nav-item d-none d-sm-inline-block">
+            <a href="/adm/inbox" class="nav-link <%= activePage === 'inbox' ? 'active' : '' %>">메시지함</a>
+          </li>
+        </ul>
+        <ul class="navbar-nav ml-auto">
+          <li class="nav-item dropdown">
+            <a class="nav-link" data-toggle="dropdown" href="#" role="button">
+              <i class="fas fa-user-circle mr-1"></i><%= user?.username ?? '관리자' %>
+              <i class="fas fa-angle-down ml-1"></i>
+            </a>
+            <div class="dropdown-menu dropdown-menu-right">
+              <a class="dropdown-item" href="/adm/dashboard">
+                <i class="fas fa-tachometer-alt mr-2"></i> 대시보드
+              </a>
+              <div class="dropdown-divider"></div>
+              <a class="dropdown-item" href="#" data-action="logout">
+                <i class="fas fa-sign-out-alt mr-2"></i> 로그아웃
+              </a>
+            </div>
+          </li>
+        </ul>
+      </nav>
+
+      <aside class="main-sidebar sidebar-dark-primary elevation-4">
+        <a href="/adm/dashboard" class="brand-link">
+          <span class="brand-text font-weight-light">인싸인 Admin</span>
+        </a>
+        <div class="sidebar">
+          <div class="user-panel mt-3 pb-3 mb-3 d-flex">
+            <div class="image">
+              <i class="fas fa-user-shield fa-2x text-white-50"></i>
+            </div>
+            <div class="info">
+              <a href="/adm/dashboard" class="d-block"><%= user?.username ?? '관리자' %></a>
+            </div>
+          </div>
+          <nav class="mt-2">
+            <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu">
+              <li class="nav-item">
+                <a href="/adm/dashboard" class="nav-link <%= activePage === 'dashboard' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-tachometer-alt"></i>
+                  <p>대시보드</p>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a href="/adm/list" class="nav-link <%= activePage === 'admins' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-users-cog"></i>
+                  <p>관리자 계정</p>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a href="/adm/users" class="nav-link <%= activePage === 'users' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-user-friends"></i>
+                  <p>가입자 관리</p>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a href="/adm/contracts" class="nav-link active">
+                  <i class="nav-icon fas fa-file-signature"></i>
+                  <p>계약 관리</p>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a href="/adm/templates" class="nav-link <%= activePage === 'templates' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-file-alt"></i>
+                  <p>템플릿 관리</p>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a href="/adm/policies" class="nav-link <%= activePage === 'policies' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-shield-alt"></i>
+                  <p>약관/정책 관리</p>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a href="/adm/inbox" class="nav-link <%= activePage === 'inbox' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-envelope"></i>
+                  <p>메시지함</p>
+                </a>
+              </li>
+            </ul>
+          </nav>
+        </div>
+      </aside>
+
+      <div class="content-wrapper">
+        <section class="content-header">
+          <div class="container-fluid">
+            <div class="row mb-2">
+              <div class="col-sm-6">
+                <h1>계약 관리</h1>
+              </div>
+              <div class="col-sm-6">
+                <ol class="breadcrumb float-sm-right">
+                  <li class="breadcrumb-item"><a href="/adm/dashboard">Home</a></li>
+                  <li class="breadcrumb-item active">계약 관리</li>
+                </ol>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="content">
+          <div class="container-fluid">
+            <% if (errorMessage) { %>
+            <div class="alert alert-warning"><i class="fas fa-exclamation-triangle mr-2"></i><%= errorMessage %></div>
+            <% } %>
+            <div class="row">
+              <div class="col-lg-7">
+                <div class="card">
+                  <div class="card-header border-0 d-flex justify-content-between align-items-center">
+                    <h3 class="card-title mb-0">계약 목록</h3>
+                    <span class="text-muted small">총 <%= contracts.length %>건</span>
+                  </div>
+                  <div class="card-body table-responsive p-0" style="max-height: 540px;">
+                    <table class="table table-hover text-nowrap">
+                      <thead>
+                        <tr>
+                          <th style="width: 60px">ID</th>
+                          <th>계약명</th>
+                          <th>고객</th>
+                          <th>수행자</th>
+                          <th>템플릿</th>
+                          <th style="width: 100px" class="text-center">상태</th>
+                          <th style="width: 160px">수정일</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <% if (!contracts.length) { %>
+                        <tr>
+                          <td colspan="7" class="text-center text-muted">등록된 계약이 없습니다.</td>
+                        </tr>
+                        <% } %>
+                        <% contracts.forEach(function (item) { %>
+                        <tr class="<%= selectedContract && selectedContract.id === item.id ? 'table-info' : '' %>">
+                          <td><a href="/adm/contracts/<%= item.id %>" class="font-weight-bold"><%= item.id %></a></td>
+                          <td><a href="/adm/contracts/<%= item.id %>"><%= item.name %></a></td>
+                          <td><%= item.clientName %></td>
+                          <td><%= item.performerName %></td>
+                          <td><%= item.templateName %></td>
+                          <td class="text-center">
+                            <span class="badge <%= item.statusBadgeClass %>"><%= item.statusLabel %></span>
+                          </td>
+                          <td><small class="text-muted"><%= item.updatedAt %></small></td>
+                        </tr>
+                        <% }) %>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              <div class="col-lg-5">
+                <div class="card card-outline card-primary">
+                  <div class="card-header d-flex justify-content-between align-items-center">
+                    <h3 class="card-title mb-0">계약 상세</h3>
+                    <% if (selectedContract) { %>
+                    <div class="d-flex align-items-center">
+                      <span class="badge <%= selectedContract.statusBadgeClass %> mr-2"><%= selectedContract.statusLabel %></span>
+                      <a
+                        href="/adm/contracts/<%= selectedContract.id %>/pdf"
+                        class="btn btn-outline-primary btn-sm"
+                      >
+                        <i class="fas fa-file-download mr-1"></i> PDF 다운로드
+                      </a>
+                    </div>
+                    <% } %>
+                  </div>
+                  <% if (selectedContract) { %>
+                  <div class="card-body">
+                    <dl class="row mb-0">
+                      <dt class="col-sm-4">계약명</dt>
+                      <dd class="col-sm-8"><%= selectedContract.name %></dd>
+
+                      <dt class="col-sm-4">템플릿</dt>
+                      <dd class="col-sm-8">
+                        <%= selectedContract.templateName %>
+                        <% if (selectedContract.templateSchemaVersion) { %>
+                        <small class="text-muted ml-1">(v<%= selectedContract.templateSchemaVersion %>)</small>
+                        <% } %>
+                      </dd>
+
+                      <dt class="col-sm-4">고객</dt>
+                      <dd class="col-sm-8">
+                        <div><strong><%= selectedContract.clientName %></strong></div>
+                        <div class="text-muted"><%= selectedContract.clientEmail %></div>
+                        <div class="text-muted"><%= selectedContract.clientContact %></div>
+                      </dd>
+
+                      <dt class="col-sm-4">수행자</dt>
+                      <dd class="col-sm-8">
+                        <div><strong><%= selectedContract.performerName %></strong></div>
+                        <div class="text-muted"><%= selectedContract.performerEmail %></div>
+                        <div class="text-muted"><%= selectedContract.performerContact %></div>
+                      </dd>
+
+                      <dt class="col-sm-4">기간</dt>
+                      <dd class="col-sm-8">
+                        <div>시작: <%= selectedContract.startDate %></div>
+                        <div>종료: <%= selectedContract.endDate %></div>
+                      </dd>
+
+                      <dt class="col-sm-4">서명 링크</dt>
+                      <dd class="col-sm-8">
+                        <span class="text-monospace"><%= selectedContract.signatureToken %></span>
+                      </dd>
+
+                      <dt class="col-sm-4">요청일</dt>
+                      <dd class="col-sm-8"><%= selectedContract.signatureSentAt %></dd>
+
+                      <dt class="col-sm-4">완료일</dt>
+                      <dd class="col-sm-8"><%= selectedContract.signatureCompletedAt %></dd>
+
+                      <dt class="col-sm-4">거절일</dt>
+                      <dd class="col-sm-8"><%= selectedContract.signatureDeclinedAt %></dd>
+
+                      <dt class="col-sm-4">서명 방식</dt>
+                      <dd class="col-sm-8"><%= selectedContract.signatureSource %></dd>
+                    </dl>
+
+                    <% if (selectedContract.recipientFormEntries.length) { %>
+                    <hr />
+                    <h5 class="font-weight-bold">추가 입력값</h5>
+                    <table class="table table-sm table-hover">
+                      <thead>
+                        <tr>
+                          <th style="width: 180px">필드 ID</th>
+                          <th>값</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <% selectedContract.recipientFormEntries.forEach(function(entry){ %>
+                        <tr>
+                          <td class="text-monospace"><%= entry.key %></td>
+                          <td><%= entry.value %></td>
+                        </tr>
+                        <% }) %>
+                      </tbody>
+                    </table>
+                    <% } %>
+
+                    <% if (selectedContract.detailsHtml) { %>
+                    <hr />
+                    <h5 class="font-weight-bold">계약 상세 본문</h5>
+                    <div class="bg-white p-3 border rounded contract-body"><%- selectedContract.detailsHtml %></div>
+                    <% } else if (selectedContract.detailsPlain) { %>
+                    <hr />
+                    <h5 class="font-weight-bold">계약 상세 본문</h5>
+                    <pre class="bg-light p-3 border rounded" style="white-space: pre-wrap;"><%= selectedContract.detailsPlain %></pre>
+                    <% } %>
+
+                    <% if (selectedContract.metadataJson) { %>
+                    <hr />
+                    <h5 class="font-weight-bold">메타데이터(JSON)</h5>
+                    <pre class="bg-dark text-white p-3 rounded" style="white-space: pre-wrap; font-size: 13px;"><%= selectedContract.metadataJson %></pre>
+                    <% } %>
+
+                    <% if (selectedContract.signatureImage) { %>
+                    <hr />
+                    <h5 class="font-weight-bold">서명 이미지</h5>
+                    <% if (selectedContract.signatureImageHint === 'data-url') { %>
+                    <img src="<%= selectedContract.signatureImage %>" alt="Signature" class="img-fluid border rounded" />
+                    <% } else { %>
+                    <a href="<%= selectedContract.signatureImage %>" target="_blank" rel="noopener" class="btn btn-outline-primary btn-sm">
+                      <i class="fas fa-external-link-alt mr-1"></i> 서명 이미지 열기
+                    </a>
+                    <% } %>
+                    <% } %>
+                  </div>
+                  <% } else { %>
+                  <div class="card-body text-center text-muted" style="min-height: 260px;">
+                    <i class="fas fa-file-contract fa-3x mb-3"></i>
+                    <p class="mb-0">왼쪽 목록에서 계약을 선택하면 상세 정보가 표시됩니다.</p>
+                  </div>
+                  <% } %>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <footer class="main-footer">
+        <strong>인싸인 Admin</strong>
+        <div class="float-right d-none d-sm-inline">총 계약: <%= contracts.length %>건</div>
+      </footer>
+    </div>
+
+    <form id="logout-form" method="post" action="/adm/logout" style="display: none;"></form>
+
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.4/dist/jquery.min.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/overlayscrollbars@1.13.1/js/jquery.overlayScrollbars.min.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/js/adminlte.min.js" crossorigin="anonymous"></script>
+    <script>
+      document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('[data-action="logout"]').forEach(function (el) {
+          el.addEventListener('click', function (event) {
+            event.preventDefault();
+            document.getElementById('logout-form').submit();
+          });
+        });
+      });
+    </script>
+  </body>
+</html>

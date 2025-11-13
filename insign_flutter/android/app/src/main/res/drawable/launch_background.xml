@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Launch screen matching Flutter splash screen -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Purple gradient background matching Flutter splash -->
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:type="linear"
+                android:angle="270"
+                android:startColor="#6A4C93"
+                android:endColor="#4A148C" />
+        </shape>
+    </item>
+
+    <!-- Center logo with proper scaling -->
+    <item
+        android:gravity="center"
+        android:width="180dp"
+        android:height="180dp">
+        <bitmap
+            android:gravity="fill"
+            android:src="@drawable/splash_img" />
+    </item>
+</layer-list>

@@ -1,0 +1,224 @@
+<% const activePage = 'templates'; %>
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>템플릿 관리</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.15.4/css/all.min.css" crossorigin="anonymous" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/overlayscrollbars@1.13.1/css/OverlayScrollbars.min.css" crossorigin="anonymous" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/css/adminlte.min.css" crossorigin="anonymous" />
+  </head>
+  <body class="hold-transition sidebar-mini">
+    <div class="wrapper">
+      <nav class="main-header navbar navbar-expand navbar-white navbar-light">
+        <ul class="navbar-nav">
+          <li class="nav-item">
+            <a class="nav-link" data-widget="pushmenu" href="#" role="button"><i class="fas fa-bars"></i></a>
+          </li>
+          <li class="nav-item d-none d-sm-inline-block">
+            <a href="/adm/dashboard" class="nav-link">대시보드</a>
+          </li>
+          <li class="nav-item d-none d-sm-inline-block">
+            <a href="/adm/list" class="nav-link">관리자 계정</a>
+          </li>
+          <li class="nav-item d-none d-sm-inline-block">
+            <a href="/adm/users" class="nav-link">가입자 관리</a>
+          </li>
+          <li class="nav-item d-none d-sm-inline-block">
+            <a href="/adm/contracts" class="nav-link">계약 관리</a>
+          </li>
+          <li class="nav-item d-none d-sm-inline-block">
+            <a href="/adm/templates" class="nav-link active">템플릿 관리</a>
+          </li>
+          <li class="nav-item d-none d-sm-inline-block">
+            <a href="/adm/policies" class="nav-link <%= activePage === 'policies' ? 'active' : '' %>">약관/정책</a>
+          </li>
+          <li class="nav-item d-none d-sm-inline-block">
+            <a href="/adm/inbox" class="nav-link <%= activePage === 'inbox' ? 'active' : '' %>">메시지함</a>
+          </li>
+        </ul>
+        <ul class="navbar-nav ml-auto">
+          <li class="nav-item dropdown">
+            <a class="nav-link" data-toggle="dropdown" href="#" role="button">
+              <i class="fas fa-user-circle mr-1"></i><%= user?.username ?? '관리자' %>
+              <i class="fas fa-angle-down ml-1"></i>
+            </a>
+            <div class="dropdown-menu dropdown-menu-right">
+              <a class="dropdown-item" href="/adm/list">
+                <i class="fas fa-users-cog mr-2"></i> 관리자 관리
+              </a>
+              <div class="dropdown-divider"></div>
+              <a class="dropdown-item" href="#" data-action="logout">
+                <i class="fas fa-sign-out-alt mr-2"></i> 로그아웃
+              </a>
+            </div>
+          </li>
+        </ul>
+      </nav>
+
+      <aside class="main-sidebar sidebar-dark-primary elevation-4">
+        <a href="/adm/dashboard" class="brand-link">
+          <span class="brand-text font-weight-light">인싸인 Admin</span>
+        </a>
+        <div class="sidebar">
+          <div class="user-panel mt-3 pb-3 mb-3 d-flex">
+            <div class="image">
+              <i class="fas fa-user-shield fa-2x text-white-50"></i>
+            </div>
+            <div class="info">
+              <a href="/adm/dashboard" class="d-block"><%= user?.username ?? '관리자' %></a>
+            </div>
+          </div>
+          <nav class="mt-2">
+            <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu">
+              <li class="nav-item">
+                <a href="/adm/dashboard" class="nav-link <%= activePage === 'dashboard' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-tachometer-alt"></i>
+                  <p>대시보드</p>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a href="/adm/list" class="nav-link <%= activePage === 'admins' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-users-cog"></i>
+                  <p>관리자 계정</p>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a href="/adm/users" class="nav-link <%= activePage === 'users' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-user-friends"></i>
+                  <p>가입자 관리</p>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a href="/adm/contracts" class="nav-link <%= activePage === 'contracts' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-file-signature"></i>
+                  <p>계약 관리</p>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a href="/adm/templates" class="nav-link active">
+                  <i class="nav-icon fas fa-file-alt"></i>
+                  <p>템플릿 관리</p>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a href="/adm/policies" class="nav-link <%= activePage === 'policies' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-shield-alt"></i>
+                  <p>약관/정책 관리</p>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a href="/adm/inbox" class="nav-link <%= activePage === 'inbox' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-envelope"></i>
+                  <p>메시지함</p>
+                </a>
+              </li>
+            </ul>
+          </nav>
+        </div>
+      </aside>
+
+      <div class="content-wrapper">
+        <section class="content-header">
+          <div class="container-fluid">
+            <div class="row mb-2">
+              <div class="col-sm-6">
+                <h1>템플릿 관리</h1>
+              </div>
+              <div class="col-sm-6">
+                <ol class="breadcrumb float-sm-right">
+                  <li class="breadcrumb-item"><a href="/adm/dashboard">Home</a></li>
+                  <li class="breadcrumb-item active">템플릿 관리</li>
+                </ol>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="content">
+          <div class="container-fluid">
+            <div class="card">
+              <div class="card-header d-flex justify-content-between align-items-center">
+                <h3 class="card-title mb-0">등록된 템플릿</h3>
+                <a href="/adm/templates/new" class="btn btn-primary">
+                  <i class="fas fa-plus mr-1"></i> 새 템플릿 등록
+                </a>
+              </div>
+              <div class="card-body table-responsive p-0">
+                <table class="table table-hover text-nowrap">
+                  <thead>
+                    <tr>
+                      <th style="width: 60px">ID</th>
+                      <th>템플릿명</th>
+                      <th>카테고리</th>
+                      <th style="width: 90px" class="text-center">필드 수</th>
+                      <th style="width: 180px">최근 수정</th>
+                      <th style="width: 140px" class="text-right">관리</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <% if (!templates.length) { %>
+                      <tr>
+                        <td colspan="5" class="text-center text-muted">등록된 템플릿이 없습니다.</td>
+                      </tr>
+                    <% } %>
+                    <% templates.forEach(function(template) { %>
+                      <tr>
+                        <td><%= template.id %></td>
+                        <td><strong><%= template.name %></strong></td>
+                        <td>
+                          <span class="badge badge-info"><%= template.category %></span>
+                          <% if (template.formSchema && template.formSchema.version) { %>
+                            <span class="badge badge-light border ml-1">v<%= template.formSchema.version %></span>
+                          <% } %>
+                        </td>
+                        <td class="text-center">
+                          <% let fieldCount = 0; if (template.formSchema && Array.isArray(template.formSchema.sections)) { fieldCount = template.formSchema.sections.reduce(function (sum, section) { return sum + (Array.isArray(section.fields) ? section.fields.length : 0); }, 0); } %>
+                          <%= fieldCount %>
+                        </td>
+                        <td><%= template.lastUpdatedAt ? new Date(template.lastUpdatedAt).toLocaleString('ko-KR') : '-' %></td>
+                        <td class="text-right">
+                          <a href="/adm/templates/<%= template.id %>/edit" class="btn btn-sm btn-outline-primary mr-1">
+                            <i class="fas fa-edit"></i>
+                          </a>
+                          <form method="post" action="/adm/templates/<%= template.id %>/delete" class="d-inline" onsubmit="return confirm('정말 삭제하시겠습니까?');">
+                            <button type="submit" class="btn btn-sm btn-outline-danger">
+                              <i class="fas fa-trash"></i>
+                            </button>
+                          </form>
+                        </td>
+                      </tr>
+                    <% }) %>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <footer class="main-footer">
+        <strong>인싸인 Admin</strong>
+        <div class="float-right d-none d-sm-inline">최종 업데이트: <%= new Date().toLocaleDateString('ko-KR') %></div>
+      </footer>
+    </div>
+
+    <form id="logout-form" method="post" action="/adm/logout" style="display: none;"></form>
+
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.4/dist/jquery.min.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/overlayscrollbars@1.13.1/js/jquery.overlayScrollbars.min.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/js/adminlte.min.js" crossorigin="anonymous"></script>
+    <script>
+      document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('[data-action="logout"]').forEach(function (el) {
+          el.addEventListener('click', function (event) {
+            event.preventDefault();
+            document.getElementById('logout-form').submit();
+          });
+        });
+      });
+    </script>
+  </body>
+</html>

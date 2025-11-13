@@ -1,0 +1,3 @@
+bool markGoogleSdkInitialized() {
+  return false;
+}

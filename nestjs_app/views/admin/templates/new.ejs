@@ -1,0 +1,1141 @@
+<% const activePage = 'templates'; %>
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>새 템플릿 등록</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.15.4/css/all.min.css" crossorigin="anonymous" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/overlayscrollbars@1.13.1/css/OverlayScrollbars.min.css" crossorigin="anonymous" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/css/adminlte.min.css" crossorigin="anonymous" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/suneditor@2.45.1/dist/css/suneditor.min.css" crossorigin="anonymous" />
+    <style>
+      .preview-frame {
+        background-color: #fefefe;
+        border: 1px solid #dcdcdc;
+        border-radius: 6px;
+        min-height: 420px;
+        padding: 24px;
+        font-size: 14px;
+        line-height: 1.6;
+        color: #222;
+        box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.02);
+      }
+      .preview-frame h1,
+      .preview-frame h2,
+      .preview-frame h3 {
+        margin-top: 1.2em;
+      }
+      .preview-frame .placeholder {
+        color: #c0392b;
+        font-weight: 600;
+      }
+      .contract-doc {
+        max-width: 780px;
+        margin: 0 auto;
+        border: 1px solid #dfe3eb;
+        border-radius: 8px;
+        padding: 32px 36px;
+        background-color: #ffffff;
+        box-shadow: 0 6px 12px rgba(15, 32, 56, 0.04);
+        font-family: 'Spoqa Han Sans Neo', 'Noto Sans KR', sans-serif;
+      }
+      .contract-doc h1,
+      .contract-doc h2,
+      .contract-doc h3 {
+        font-weight: 600;
+        color: #073b4c;
+      }
+      .contract-doc h1 {
+        font-size: 22px;
+        text-align: center;
+        letter-spacing: 0.05em;
+        margin-bottom: 28px;
+      }
+      .contract-doc h2 {
+        font-size: 18px;
+        margin-top: 28px;
+        margin-bottom: 12px;
+        border-bottom: 1px solid #e0e6ee;
+        padding-bottom: 6px;
+      }
+      .contract-doc p {
+        margin-bottom: 10px;
+        color: #23313f;
+        font-size: 14px;
+        line-height: 1.7;
+      }
+      .contract-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 18px 0;
+        font-size: 13px;
+      }
+      .contract-table th {
+        background-color: #f1f5f9;
+      }
+      .contract-table th,
+      .contract-table td {
+        border: 1px solid #ccd6e0;
+        padding: 8px 10px;
+        vertical-align: top;
+      }
+      .signature-block {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 16px;
+        margin-top: 28px;
+      }
+      .signature-card {
+        flex: 1 1 240px;
+        border: 1px solid #ccd6e0;
+        border-radius: 6px;
+        padding: 14px 16px;
+        background-color: #fdfdfd;
+      }
+      .signature-card h4 {
+        font-size: 14px;
+        margin-bottom: 12px;
+        color: #0f2f4a;
+      }
+      .signature-card p {
+        margin-bottom: 8px;
+        font-size: 13px;
+      }
+      .placeholder {
+        color: #d62828;
+        font-weight: 600;
+      }
+      .text-body {
+        color: #23313f;
+      }
+      .font-monospace {
+        font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
+      }
+      .schema-section-card {
+        border: 1px solid #d6d6d6;
+        border-radius: 6px;
+        padding: 16px;
+        margin-bottom: 18px;
+        background-color: #fff;
+      }
+      .schema-section-card + .schema-section-card {
+        margin-top: 12px;
+      }
+      .schema-fields-table thead th {
+        font-size: 13px;
+        white-space: nowrap;
+      }
+      .schema-fields-table tbody td {
+        vertical-align: middle;
+      }
+      .schema-fields-table input,
+      .schema-fields-table select {
+        height: 32px;
+        padding: 4px 8px;
+        font-size: 13px;
+      }
+      .schema-fields-table .form-text {
+        font-size: 12px;
+      }
+    </style>
+  </head>
+  <body class="hold-transition sidebar-mini">
+    <div class="wrapper">
+      <nav class="main-header navbar navbar-expand navbar-white navbar-light">
+        <ul class="navbar-nav">
+          <li class="nav-item">
+            <a class="nav-link" data-widget="pushmenu" href="#" role="button"><i class="fas fa-bars"></i></a>
+          </li>
+          <li class="nav-item d-none d-sm-inline-block">
+            <a href="/adm/dashboard" class="nav-link">대시보드</a>
+          </li>
+          <li class="nav-item d-none d-sm-inline-block">
+            <a href="/adm/list" class="nav-link">관리자 계정</a>
+          </li>
+          <li class="nav-item d-none d-sm-inline-block">
+            <a href="/adm/templates" class="nav-link active">템플릿 관리</a>
+          </li>
+          <li class="nav-item d-none d-sm-inline-block">
+            <a href="/adm/policies" class="nav-link <%= activePage === 'policies' ? 'active' : '' %>">약관/정책</a>
+          </li>
+        </ul>
+        <ul class="navbar-nav ml-auto">
+          <li class="nav-item dropdown">
+            <a class="nav-link" data-toggle="dropdown" href="#" role="button">
+              <i class="fas fa-user-circle mr-1"></i><%= user?.username ?? '관리자' %>
+              <i class="fas fa-angle-down ml-1"></i>
+            </a>
+            <div class="dropdown-menu dropdown-menu-right">
+              <a class="dropdown-item" href="/adm/list">
+                <i class="fas fa-users-cog mr-2"></i> 관리자 관리
+              </a>
+              <div class="dropdown-divider"></div>
+              <a class="dropdown-item" href="#" data-action="logout">
+                <i class="fas fa-sign-out-alt mr-2"></i> 로그아웃
+              </a>
+            </div>
+          </li>
+        </ul>
+      </nav>
+
+      <aside class="main-sidebar sidebar-dark-primary elevation-4">
+        <a href="/adm/dashboard" class="brand-link">
+          <span class="brand-text font-weight-light">인싸인 Admin</span>
+        </a>
+        <div class="sidebar">
+          <div class="user-panel mt-3 pb-3 mb-3 d-flex">
+            <div class="image">
+              <i class="fas fa-user-shield fa-2x text-white-50"></i>
+            </div>
+            <div class="info">
+              <a href="/adm/dashboard" class="d-block"><%= user?.username ?? '관리자' %></a>
+            </div>
+          </div>
+          <nav class="mt-2">
+            <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu">
+              <li class="nav-item">
+                <a href="/adm/dashboard" class="nav-link <%= activePage === 'dashboard' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-tachometer-alt"></i>
+                  <p>대시보드</p>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a href="/adm/list" class="nav-link <%= activePage === 'admins' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-users-cog"></i>
+                  <p>관리자 계정</p>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a href="/adm/templates" class="nav-link active">
+                  <i class="nav-icon fas fa-file-alt"></i>
+                  <p>템플릿 관리</p>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a href="/adm/policies" class="nav-link <%= activePage === 'policies' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-shield-alt"></i>
+                  <p>약관/정책 관리</p>
+                </a>
+              </li>
+            </ul>
+          </nav>
+        </div>
+      </aside>
+
+      <div class="content-wrapper">
+        <section class="content-header">
+          <div class="container-fluid">
+            <div class="row mb-2">
+              <div class="col-sm-6">
+                <h1>새 템플릿 등록</h1>
+              </div>
+              <div class="col-sm-6">
+                <ol class="breadcrumb float-sm-right">
+                  <li class="breadcrumb-item"><a href="/adm/dashboard">Home</a></li>
+                  <li class="breadcrumb-item"><a href="/adm/templates">템플릿 관리</a></li>
+                  <li class="breadcrumb-item active">새 템플릿</li>
+                </ol>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="content">
+          <div class="container-fluid">
+            <form method="post" action="/adm/templates/create" id="template-form">
+              <input type="hidden" name="formSchema" id="formSchema" />
+              <input type="hidden" name="samplePayload" id="samplePayload" />
+
+              <div class="card card-outline card-primary mb-4">
+                <div class="card-header">
+                  <h3 class="card-title">템플릿 정보</h3>
+                </div>
+                <div class="card-body">
+                  <div class="form-group">
+                    <label for="name">템플릿명</label>
+                    <input type="text" class="form-control" id="name" name="name" placeholder="예: 표준 근로계약서" required />
+                  </div>
+                  <div class="form-group">
+                    <label for="category">카테고리</label>
+                    <input type="text" class="form-control" id="category" name="category" placeholder="예: 인사/노무" required />
+                  </div>
+                  <div class="form-group">
+                    <label for="description">설명</label>
+                    <textarea class="form-control" id="description" name="description" rows="3" placeholder="템플릿 용도와 특징을 간단히 입력하세요." required></textarea>
+                  </div>
+                  <div class="form-group mb-0">
+                    <label for="content">본문</label>
+                    <textarea class="form-control" id="content" name="content" rows="12" placeholder="계약서 본문을 Markdown 또는 머스태시(`{{필드}}`) 형태로 입력하세요." required></textarea>
+                    <small class="form-text text-muted">`{{필드키}}`를 아래에서 정의한 입력 항목 ID와 맞춰 쓰면 미리보기와 서명 화면에 값이 채워집니다.</small>
+                  </div>
+                </div>
+              </div>
+
+              <div class="card card-outline card-info mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                  <h3 class="card-title mb-0">입력 항목 구성</h3>
+                  <button type="button" class="btn btn-sm btn-outline-primary" data-action="add-section">
+                    <i class="fas fa-layer-group mr-1"></i> 섹션 추가
+                  </button>
+                </div>
+                <div class="card-body">
+                  <div class="form-row">
+                    <div class="form-group col-sm-3">
+                      <label for="schema-version">스키마 버전</label>
+                      <input type="number" class="form-control" id="schema-version" data-field="schema-version" min="1" step="1" value="1" />
+                    </div>
+                    <div class="form-group col-sm-9">
+                      <label for="schema-description">스키마 설명 (선택)</label>
+                      <input type="text" class="form-control" id="schema-description" data-field="schema-description" placeholder="양식에 대한 메모 또는 개정 이유" />
+                    </div>
+                  </div>
+                  <div data-role="section-container"></div>
+                  <p class="text-muted small mb-0">
+                    필드 키(Key)는 영문/숫자/언더스코어만 사용하는 것이 좋습니다. 서명자 역할은 작성자(author), 수신자(recipient), 증인(witness), 열람자(viewer) 중 선택하세요.
+                  </p>
+                </div>
+              </div>
+
+              <div class="card card-outline card-secondary mb-4">
+                <div class="card-header">
+                  <h3 class="card-title">샘플 데이터 &amp; 미리보기</h3>
+                </div>
+                <div class="card-body">
+                  <div class="row">
+                    <div class="col-lg-5 mb-3 mb-lg-0">
+                      <label for="samplePayloadEditor">샘플 데이터(JSON)</label>
+                      <textarea id="samplePayloadEditor" class="form-control font-monospace" rows="12" placeholder='예) {"companyName": "인싸인 주식회사"}'></textarea>
+                      <div class="small text-danger mt-2 d-none" id="samplePayloadError"></div>
+                      <button type="button" class="btn btn-sm btn-outline-secondary mt-2" data-action="reset-sample">
+                        <i class="fas fa-sync-alt mr-1"></i> 샘플 데이터 초기화
+                      </button>
+                    </div>
+                    <div class="col-lg-7">
+                      <label>미리보기</label>
+                      <div class="preview-frame" id="template-preview"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="card-footer d-flex justify-content-between align-items-center">
+                <a href="/adm/templates" class="btn btn-outline-secondary">
+                  <i class="fas fa-chevron-left mr-1"></i> 목록으로
+                </a>
+                <button type="submit" class="btn btn-primary">
+                  <i class="fas fa-save mr-1"></i> 저장
+                </button>
+              </div>
+            </form>
+          </div>
+        </section>
+      </div>
+
+      <footer class="main-footer">
+        <strong>인싸인 Admin</strong>
+        <div class="float-right d-none d-sm-inline">최종 업데이트: <%= new Date().toLocaleDateString('ko-KR') %></div>
+      </footer>
+    </div>
+
+    <form id="logout-form" method="post" action="/adm/logout" style="display: none;"></form>
+
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.4/dist/jquery.min.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/overlayscrollbars@1.13.1/js/jquery.overlayScrollbars.min.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/js/adminlte.min.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/suneditor@2.45.1/dist/suneditor.min.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/suneditor@2.45.1/dist/lang/ko.js" crossorigin="anonymous"></script>
+    <script>
+      document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('[data-action="logout"]').forEach(function (el) {
+          el.addEventListener('click', function (event) {
+            event.preventDefault();
+            document.getElementById('logout-form').submit();
+          });
+        });
+      });
+    </script>
+    <script>
+      (function () {
+        const defaultSchema = {
+          version: 1,
+          title: '기본 계약서 항목',
+          description: '작성자와 수신자에 필요한 항목을 정의합니다.',
+          sections: [
+            {
+              id: 'base-information',
+              title: '기본 정보',
+              description: '계약서 제목과 개요',
+              role: 'author',
+              fields: [
+                {
+                  id: 'contractTitle',
+                  label: '계약서 제목',
+                  type: 'text',
+                  role: 'author',
+                  required: true,
+                  placeholder: '예: 사무실 임대 계약',
+                },
+                {
+                  id: 'contractSummary',
+                  label: '계약 요약',
+                  type: 'textarea',
+                  role: 'author',
+                  placeholder: '핵심 조건을 간단히 서술하세요.',
+                },
+              ],
+            },
+            {
+              id: 'signer-section',
+              title: '서명자 정보',
+              description: '서명 대상 필수 항목',
+              role: 'recipient',
+              fields: [
+                {
+                  id: 'signerName',
+                  label: '서명자 이름',
+                  type: 'text',
+                  role: 'recipient',
+                  required: true,
+                },
+                {
+                  id: 'signerSignature',
+                  label: '서명',
+                  type: 'signature',
+                  role: 'recipient',
+                  required: true,
+                },
+              ],
+            },
+          ],
+        };
+
+        const defaultSample = {
+          contractTitle: '스카이코워커 위탁운영 계약',
+          contractSummary: '임대 기간 2025-08-29 ~ 2025-11-28, 총 이용료 528,000원(VAT 포함).',
+          signerName: '홍길동',
+          signerSignature: '홍길동',
+        };
+
+        function deepClone(value) {
+          return JSON.parse(JSON.stringify(value));
+        }
+
+        const templateForm = document.getElementById('template-form');
+        const schemaInput = document.getElementById('formSchema');
+        const sampleInput = document.getElementById('samplePayload');
+        const schemaVersionInput = document.querySelector('[data-field="schema-version"]');
+        const schemaDescriptionInput = document.querySelector('[data-field="schema-description"]');
+        const sectionContainer = document.querySelector('[data-role="section-container"]');
+        const sampleEditor = document.getElementById('samplePayloadEditor');
+        const sampleErrorBox = document.getElementById('samplePayloadError');
+        const contentInput = document.getElementById('content');
+        const previewContainer = document.getElementById('template-preview');
+        const resetSampleButton = document.querySelector('[data-action="reset-sample"]');
+        const addSectionButton = document.querySelector('[data-action="add-section"]');
+
+        const schemaState = deepClone(defaultSchema);
+        const sampleState = deepClone(defaultSample);
+
+        schemaVersionInput.value = schemaState.version;
+        schemaDescriptionInput.value = schemaState.description ?? '';
+        sampleEditor.value = JSON.stringify(sampleState, null, 2);
+
+        const fieldTypes = [
+          'text',
+          'textarea',
+          'number',
+          'currency',
+          'date',
+          'select',
+          'radio',
+          'checkbox',
+          'signature',
+          'email',
+          'phone',
+        ];
+        const participantRoles = ['author', 'recipient', 'witness', 'viewer', 'all'];
+        const blockSnippets = {
+          documentShell: `<div class="contract-doc">
+  <h1>표준 근로계약서</h1>
+  <h2>1. 계약 당사자</h2>
+  <table class="contract-table">
+    <tbody>
+      <tr>
+        <th>사용자(회사)</th>
+        <td>{{employerName}}</td>
+        <th>대표자</th>
+        <td>{{employerRepresentative}}</td>
+      </tr>
+      <tr>
+        <th>사업자등록번호</th>
+        <td>{{businessRegistrationNumber}}</td>
+        <th>연락처</th>
+        <td>{{employerContact}}</td>
+      </tr>
+      <tr>
+        <th>사업장 주소</th>
+        <td colspan="3">{{employerAddress}}</td>
+      </tr>
+      <tr>
+        <th>근로자 이름</th>
+        <td>{{employeeName}}</td>
+        <th>연락처</th>
+        <td>{{employeeContact}}</td>
+      </tr>
+      <tr>
+        <th>근로자 주소</th>
+        <td colspan="3">{{employeeAddress}}</td>
+      </tr>
+    </tbody>
+  </table>
+  <h2>2. 근로조건</h2>
+  <table class="contract-table">
+    <tbody>
+      <tr>
+        <th>근로계약 기간</th>
+        <td>{{employmentStartDate}} ~ {{employmentEndDate}}</td>
+        <th>계약 유형</th>
+        <td>{{employmentContractType}}</td>
+      </tr>
+      <tr>
+        <th>근무 장소</th>
+        <td>{{workplaceLocation}}</td>
+        <th>담당 업무</th>
+        <td>{{jobDescription}}</td>
+      </tr>
+      <tr>
+        <th>근로일</th>
+        <td>{{weeklyWorkDays}}</td>
+        <th>근로시간</th>
+        <td>{{dailyWorkHours}}</td>
+      </tr>
+      <tr>
+        <th>휴게시간</th>
+        <td>{{restTime}}</td>
+        <th>연장·야간·휴일근로</th>
+        <td>{{overtimePolicy}}</td>
+      </tr>
+    </tbody>
+  </table>
+  <h2>3. 임금</h2>
+  <table class="contract-table">
+    <tbody>
+      <tr>
+        <th>임금 형태</th>
+        <td>{{wageType}}</td>
+        <th>기본급(원)</th>
+        <td>{{wageAmount}}</td>
+      </tr>
+      <tr>
+        <th>지급일</th>
+        <td>{{wagePaymentDate}}</td>
+        <th>지급 방법</th>
+        <td>{{wagePaymentMethod}}</td>
+      </tr>
+      <tr>
+        <th>수당</th>
+        <td colspan="3">{{allowances}}</td>
+      </tr>
+      <tr>
+        <th>상여금/인센티브</th>
+        <td colspan="3">{{bonusPolicy}}</td>
+      </tr>
+      <tr>
+        <th>퇴직금</th>
+        <td>{{severancePay}}</td>
+        <th>4대보험</th>
+        <td>국민연금 {{nationalPensionStatus}} / 건강보험 {{healthInsuranceStatus}} / 고용보험 {{employmentInsuranceStatus}} / 산재보험 {{industrialAccidentInsuranceStatus}}</td>
+      </tr>
+    </tbody>
+  </table>
+  <h2>4. 휴일·휴가</h2>
+  <p>주휴일: {{weeklyHoliday}} / 연차 유급휴가: {{annualLeaveDays}}일</p>
+  <h2>5. 특약</h2>
+  <p>{{specialTerms}}</p>
+  <div class="signature-block">
+    <div class="signature-card">
+      <h4>사용자</h4>
+      <p>서명: {{employerSignature}}</p>
+      <p>서명일: {{employerSignDate}}</p>
+    </div>
+    <div class="signature-card">
+      <h4>근로자</h4>
+      <p>서명: {{employeeSignature}}</p>
+      <p>서명일: {{employeeSignDate}}</p>
+    </div>
+  </div>
+</div>`,
+          conditionTable: `<table class="contract-table">
+  <thead>
+    <tr>
+      <th style="width: 25%">항목</th>
+      <th>내용</th>
+      <th style="width: 25%">비고</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>근로계약 기간</th>
+      <td>{{employmentStartDate}} ~ {{employmentEndDate}}</td>
+      <td></td>
+    </tr>
+    <tr>
+      <th>근무 장소</th>
+      <td>{{workplaceLocation}}</td>
+      <td></td>
+    </tr>
+    <tr>
+      <th>임금 조건</th>
+      <td>{{wageType}} / {{wageAmount}}원 / 지급일 {{wagePaymentDate}}</td>
+      <td>{{wagePaymentMethod}}</td>
+    </tr>
+    <tr>
+      <th>휴일·휴가</th>
+      <td>주휴일 {{weeklyHoliday}}, 연차 {{annualLeaveDays}}일</td>
+      <td></td>
+    </tr>
+  </tbody>
+</table>`,
+          signatureCards: `<div class="signature-block">
+  <div class="signature-card">
+    <h4>사용자</h4>
+    <p>서명: {{employerSignature}}</p>
+    <p>서명일: {{employerSignDate}}</p>
+  </div>
+  <div class="signature-card">
+    <h4>근로자</h4>
+    <p>서명: {{employeeSignature}}</p>
+    <p>서명일: {{employeeSignDate}}</p>
+  </div>
+</div>`,
+        };
+
+        let editorInstance = null;
+
+        const editorContentStyles = `body { font-family: 'Spoqa Han Sans Neo', 'Noto Sans KR', sans-serif; font-size: 14px; color: #23313f; }
+.contract-doc { max-width: 780px; margin: 0 auto; border: 1px solid #dfe3eb; border-radius: 8px; padding: 24px 28px; background-color: #ffffff; }
+.contract-doc h1, .contract-doc h2, .contract-doc h3 { color: #073b4c; }
+.contract-doc h1 { text-align: center; font-size: 22px; margin-bottom: 24px; }
+.contract-doc h2 { font-size: 18px; margin-top: 24px; margin-bottom: 10px; border-bottom: 1px solid #e0e6ee; padding-bottom: 4px; }
+.contract-table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px; }
+.contract-table th { background-color: #f1f5f9; }
+.contract-table th, .contract-table td { border: 1px solid #ccd6e0; padding: 6px 8px; }
+.signature-block { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 24px; }
+.signature-card { flex: 1 1 240px; border: 1px solid #ccd6e0; border-radius: 6px; padding: 12px; background-color: #fdfdfd; }
+.placeholder { color: #d62828; font-weight: 600; }`;
+
+        function setSelectOptions(select, options, currentValue) {
+          select.innerHTML = '';
+          options.forEach(function (option) {
+            const element = document.createElement('option');
+            element.value = option;
+            element.textContent = option;
+            select.appendChild(element);
+          });
+          if (options.includes(currentValue)) {
+            select.value = currentValue;
+          }
+        }
+
+        function getEditorContent() {
+          if (editorInstance && typeof editorInstance.getContents === 'function') {
+            return editorInstance.getContents(false) || '';
+          }
+          return contentInput.value || '';
+        }
+
+        function syncContentFromEditor() {
+          if (editorInstance && typeof editorInstance.getContents === 'function') {
+            contentInput.value = editorInstance.getContents(false) || '';
+          }
+        }
+
+        function updateHiddenInputs() {
+          schemaInput.value = JSON.stringify(schemaState);
+          sampleInput.value = JSON.stringify(sampleState);
+        }
+
+        function escapeHtml(value) {
+          return String(value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+        }
+
+        function getNestedValue(source, path) {
+          const keys = path.split('.');
+          let current = source;
+          for (const key of keys) {
+            if (current && typeof current === 'object' && key in current) {
+              current = current[key];
+            } else {
+              return undefined;
+            }
+          }
+          return current;
+        }
+
+        function renderPreview() {
+          syncContentFromEditor();
+          const raw = getEditorContent();
+          const pattern = /{{\s*([^}]+)\s*}}/g;
+          const html = raw.replace(pattern, function (_, token) {
+            const keyPath = token.trim();
+            const value = getNestedValue(sampleState, keyPath);
+            if (value === undefined || value === null || value === '') {
+              return '<span class="placeholder">{{' + escapeHtml(keyPath) + '}}</span>';
+            }
+            return '<span class="text-body">' + escapeHtml(value) + '</span>';
+          });
+          previewContainer.innerHTML = html;
+        }
+
+        function initEditor() {
+          if (editorInstance || !window.SUNEDITOR) {
+            return;
+          }
+
+          const insertFieldPlugin = {
+            name: 'insertField',
+            display: 'command',
+            title: '{{필드}}',
+            innerHTML: '{{필드}}',
+            add: function () {},
+            action: function (core) {
+              const fieldKey = window.prompt('삽입할 필드 키를 입력하세요 (예: contractTitle)');
+              if (fieldKey && fieldKey.trim()) {
+                core.functions.insertHTML(`{{${fieldKey.trim()}}}`);
+              }
+            },
+          };
+
+          const insertBlockPlugin = {
+            name: 'insertBlock',
+            display: 'command',
+            title: '블록 추가',
+            innerHTML: '<span>블록</span>',
+            add: function () {},
+            action: function (core) {
+              const choice = window.prompt(
+                '삽입할 블록을 선택하세요:\n1) 문서 기본 틀\n2) 근로조건 요약 표\n3) 서명 박스',
+              );
+              const keyMap = { '1': 'documentShell', '2': 'conditionTable', '3': 'signatureCards' };
+              const key = keyMap[(choice || '').trim()];
+              if (key && blockSnippets[key]) {
+                core.functions.insertHTML(blockSnippets[key]);
+              }
+            },
+          };
+
+          editorInstance = SUNEDITOR.create(contentInput, {
+            height: 520,
+            lang: window.SUNEDITOR_LANG ? SUNEDITOR_LANG.ko : undefined,
+            plugins: [insertFieldPlugin, insertBlockPlugin],
+            buttonList: [
+              ['undo', 'redo'],
+              ['formatBlock', 'bold', 'underline', 'italic'],
+              ['fontColor', 'hiliteColor'],
+              ['align', 'list', 'lineHeight'],
+              ['table'],
+              ['insertField', 'insertBlock', 'removeFormat', 'codeView'],
+            ],
+            defaultStyle:
+              "font-family: 'Spoqa Han Sans Neo', 'Noto Sans KR', sans-serif; font-size: 14px; color: #23313f;",
+            attributesWhitelist: {
+              table: 'class|style|border|cellpadding|cellspacing',
+              tr: 'class|style',
+              td: 'class|style|colspan|rowspan',
+              th: 'class|style|colspan|rowspan',
+              div: 'class|style',
+              span: 'class|style',
+            },
+            onChange: function (contents) {
+              contentInput.value = contents || '';
+              renderPreview();
+            },
+          });
+
+          editorInstance.setContents(contentInput.value || '');
+          syncContentFromEditor();
+          renderPreview();
+        }
+
+        function createFieldRow(section, sectionIndex, field, fieldIndex) {
+          const row = document.createElement('tr');
+          row.dataset.sectionIndex = String(sectionIndex);
+          row.dataset.fieldIndex = String(fieldIndex);
+          row.innerHTML = `
+            <td>
+              <input type="text" class="form-control form-control-sm" data-field="field-id" placeholder="예: contractTitle" />
+            </td>
+            <td>
+              <input type="text" class="form-control form-control-sm" data-field="field-label" placeholder="필드 라벨" />
+            </td>
+            <td>
+              <select class="form-control form-control-sm" data-field="field-type"></select>
+            </td>
+            <td>
+              <select class="form-control form-control-sm" data-field="field-role"></select>
+            </td>
+            <td class="text-center align-middle">
+              <input type="checkbox" data-field="field-required" />
+            </td>
+            <td class="text-center align-middle">
+              <input type="checkbox" data-field="field-readonly" />
+            </td>
+            <td>
+              <input type="text" class="form-control form-control-sm" data-field="field-placeholder" placeholder="placeholder" />
+            </td>
+            <td>
+              <input type="text" class="form-control form-control-sm" data-field="field-options" placeholder="라벨:값, 라벨:값" />
+              <small class="form-text text-muted">콤마(,)로 구분, 라벨:값 형태</small>
+            </td>
+            <td>
+              <input type="text" class="form-control form-control-sm" data-field="field-helper" placeholder="도움말" />
+            </td>
+            <td class="text-right align-middle">
+              <button type="button" class="btn btn-xs btn-outline-danger" data-action="remove-field">삭제</button>
+            </td>
+          `;
+
+          const idInput = row.querySelector('[data-field="field-id"]');
+          const labelInput = row.querySelector('[data-field="field-label"]');
+          const typeSelect = row.querySelector('[data-field="field-type"]');
+          const roleSelect = row.querySelector('[data-field="field-role"]');
+          const requiredInput = row.querySelector('[data-field="field-required"]');
+          const readonlyInput = row.querySelector('[data-field="field-readonly"]');
+          const placeholderInput = row.querySelector('[data-field="field-placeholder"]');
+          const optionsInput = row.querySelector('[data-field="field-options"]');
+          const helperInput = row.querySelector('[data-field="field-helper"]');
+
+          setSelectOptions(typeSelect, fieldTypes, field.type ?? 'text');
+          setSelectOptions(roleSelect, participantRoles, field.role ?? 'author');
+
+          idInput.value = field.id ?? '';
+          labelInput.value = field.label ?? '';
+          requiredInput.checked = Boolean(field.required);
+          readonlyInput.checked = Boolean(field.readonly);
+          placeholderInput.value = field.placeholder ?? '';
+          helperInput.value = field.helperText ?? '';
+          optionsInput.value = Array.isArray(field.options)
+            ? field.options
+                .map(function (option) {
+                  return option.label + ':' + option.value;
+                })
+                .join(', ')
+            : '';
+
+          idInput.addEventListener('input', function () {
+            field.id = idInput.value.trim();
+            updateHiddenInputs();
+          });
+
+          labelInput.addEventListener('input', function () {
+            field.label = labelInput.value;
+            updateHiddenInputs();
+          });
+
+          typeSelect.addEventListener('change', function () {
+            field.type = typeSelect.value;
+            updateHiddenInputs();
+          });
+
+          roleSelect.addEventListener('change', function () {
+            field.role = roleSelect.value;
+            updateHiddenInputs();
+          });
+
+          requiredInput.addEventListener('change', function () {
+            field.required = requiredInput.checked;
+            updateHiddenInputs();
+          });
+
+          readonlyInput.addEventListener('change', function () {
+            field.readonly = readonlyInput.checked;
+            updateHiddenInputs();
+          });
+
+          placeholderInput.addEventListener('input', function () {
+            const value = placeholderInput.value.trim();
+            if (value) {
+              field.placeholder = value;
+            } else {
+              delete field.placeholder;
+            }
+            updateHiddenInputs();
+          });
+
+          helperInput.addEventListener('input', function () {
+            const value = helperInput.value.trim();
+            if (value) {
+              field.helperText = value;
+            } else {
+              delete field.helperText;
+            }
+            updateHiddenInputs();
+          });
+
+          optionsInput.addEventListener('input', function () {
+            const raw = optionsInput.value.trim();
+            if (!raw) {
+              delete field.options;
+              updateHiddenInputs();
+              return;
+            }
+            field.options = raw.split(',').map(function (chunk) {
+              const [label, value] = chunk.split(':').map(function (part) {
+                return part ? part.trim() : '';
+              });
+              return {
+                label: label || value || '',
+                value: value || label || '',
+              };
+            });
+            updateHiddenInputs();
+          });
+
+          row.querySelector('[data-action="remove-field"]').addEventListener('click', function () {
+            section.fields.splice(fieldIndex, 1);
+            renderSections();
+          });
+
+          return row;
+        }
+
+        function renderFields(section, sectionIndex, fieldsBody) {
+          fieldsBody.innerHTML = '';
+          if (!section.fields.length) {
+            const emptyRow = document.createElement('tr');
+            emptyRow.innerHTML = '<td colspan="9" class="text-center text-muted">필드를 추가하세요.</td>';
+            fieldsBody.appendChild(emptyRow);
+            return;
+          }
+          section.fields.forEach(function (field, fieldIndex) {
+            fieldsBody.appendChild(createFieldRow(section, sectionIndex, field, fieldIndex));
+          });
+        }
+
+        function renderSections() {
+          sectionContainer.innerHTML = '';
+
+          if (!schemaState.sections.length) {
+            const emptyNotice = document.createElement('div');
+            emptyNotice.className = 'alert alert-light border';
+            emptyNotice.textContent = '등록된 섹션이 없습니다. "섹션 추가" 버튼을 눌러 새 섹션을 만들어 주세요.';
+            sectionContainer.appendChild(emptyNotice);
+            updateHiddenInputs();
+            return;
+          }
+
+          schemaState.sections.forEach(function (section, sectionIndex) {
+            const card = document.createElement('div');
+            card.className = 'schema-section-card';
+            card.dataset.sectionIndex = String(sectionIndex);
+            card.innerHTML = `
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <div><strong>섹션 #${sectionIndex + 1}</strong></div>
+                <div>
+                  <button type="button" class="btn btn-xs btn-outline-danger" data-action="remove-section">
+                    <i class="fas fa-trash mr-1"></i> 제거
+                  </button>
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group col-md-3">
+                  <label>섹션 ID</label>
+                  <input type="text" class="form-control form-control-sm" data-field="section-id" />
+                </div>
+                <div class="form-group col-md-4">
+                  <label>섹션 제목</label>
+                  <input type="text" class="form-control form-control-sm" data-field="section-title" />
+                </div>
+                <div class="form-group col-md-3">
+                  <label>표시 대상 역할</label>
+                  <select class="form-control form-control-sm" data-field="section-role"></select>
+                </div>
+                <div class="form-group col-md-12">
+                  <label>설명 (선택)</label>
+                  <input type="text" class="form-control form-control-sm" data-field="section-description" />
+                </div>
+              </div>
+              <div class="table-responsive">
+                <table class="table table-sm table-bordered schema-fields-table mb-3">
+                  <thead>
+                    <tr>
+                      <th style="width: 150px">필드 키</th>
+                      <th style="width: 160px">라벨</th>
+                      <th style="width: 100px">타입</th>
+                      <th style="width: 110px">역할</th>
+                      <th style="width: 60px" class="text-center">필수</th>
+                      <th style="width: 70px" class="text-center">Readonly</th>
+                      <th style="width: 150px">placeholder</th>
+                      <th style="width: 200px">옵션</th>
+                      <th style="width: 180px">도움말</th>
+                      <th style="width: 70px"></th>
+                    </tr>
+                  </thead>
+                  <tbody data-role="fields-body"></tbody>
+                </table>
+              </div>
+              <div class="text-right">
+                <button type="button" class="btn btn-sm btn-outline-primary" data-action="add-field">
+                  <i class="fas fa-plus mr-1"></i> 필드 추가
+                </button>
+              </div>
+            `;
+
+            const sectionIdInput = card.querySelector('[data-field="section-id"]');
+            const sectionTitleInput = card.querySelector('[data-field="section-title"]');
+            const sectionRoleSelect = card.querySelector('[data-field="section-role"]');
+            const sectionDescriptionInput = card.querySelector('[data-field="section-description"]');
+            const fieldsBody = card.querySelector('[data-role="fields-body"]');
+            const removeSectionButton = card.querySelector('[data-action="remove-section"]');
+            const addFieldButton = card.querySelector('[data-action="add-field"]');
+
+            sectionIdInput.value = section.id ?? '';
+            sectionTitleInput.value = section.title ?? '';
+            sectionDescriptionInput.value = section.description ?? '';
+            setSelectOptions(sectionRoleSelect, participantRoles, section.role ?? 'all');
+            removeSectionButton.disabled = schemaState.sections.length === 1;
+
+            sectionIdInput.addEventListener('input', function () {
+              schemaState.sections[sectionIndex].id = sectionIdInput.value.trim();
+              updateHiddenInputs();
+            });
+
+            sectionTitleInput.addEventListener('input', function () {
+              schemaState.sections[sectionIndex].title = sectionTitleInput.value;
+              updateHiddenInputs();
+            });
+
+            sectionDescriptionInput.addEventListener('input', function () {
+              const value = sectionDescriptionInput.value.trim();
+              if (value) {
+                schemaState.sections[sectionIndex].description = value;
+              } else {
+                delete schemaState.sections[sectionIndex].description;
+              }
+              updateHiddenInputs();
+            });
+
+            sectionRoleSelect.addEventListener('change', function () {
+              schemaState.sections[sectionIndex].role = sectionRoleSelect.value;
+              updateHiddenInputs();
+            });
+
+            removeSectionButton.addEventListener('click', function () {
+              if (schemaState.sections.length === 1) {
+                return;
+              }
+              schemaState.sections.splice(sectionIndex, 1);
+              renderSections();
+            });
+
+            addFieldButton.addEventListener('click', function () {
+              schemaState.sections[sectionIndex].fields.push({
+                id: '',
+                label: '',
+                type: 'text',
+                role: 'author',
+                required: false,
+              });
+              renderSections();
+            });
+
+            renderFields(section, sectionIndex, fieldsBody);
+            sectionContainer.appendChild(card);
+          });
+
+          updateHiddenInputs();
+        }
+
+        addSectionButton.addEventListener('click', function () {
+          const nextIndex = schemaState.sections.length + 1;
+          schemaState.sections.push({
+            id: 'section-' + nextIndex,
+            title: '새 섹션 ' + nextIndex,
+            role: 'all',
+            fields: [],
+          });
+          renderSections();
+        });
+
+        schemaVersionInput.addEventListener('input', function () {
+          const value = Number(schemaVersionInput.value);
+          if (Number.isNaN(value) || value <= 0) {
+            schemaState.version = 1;
+          } else {
+            schemaState.version = Math.floor(value);
+          }
+          schemaVersionInput.value = schemaState.version;
+          updateHiddenInputs();
+        });
+
+        schemaDescriptionInput.addEventListener('input', function () {
+          const value = schemaDescriptionInput.value.trim();
+          if (value) {
+            schemaState.description = value;
+          } else {
+            delete schemaState.description;
+          }
+          updateHiddenInputs();
+        });
+
+        sampleEditor.addEventListener('input', function () {
+          const raw = sampleEditor.value;
+          if (!raw.trim()) {
+            Object.keys(sampleState).forEach(function (key) {
+              delete sampleState[key];
+            });
+            sampleErrorBox.classList.add('d-none');
+            updateHiddenInputs();
+            renderPreview();
+            return;
+          }
+          try {
+            const parsed = JSON.parse(raw);
+            if (!parsed || typeof parsed !== 'object') {
+              throw new Error('invalid');
+            }
+            Object.keys(sampleState).forEach(function (key) {
+              delete sampleState[key];
+            });
+            Object.assign(sampleState, parsed);
+            sampleErrorBox.classList.add('d-none');
+            updateHiddenInputs();
+            renderPreview();
+          } catch (error) {
+            sampleErrorBox.textContent = 'JSON 형식이 올바르지 않습니다. 따옴표와 쉼표를 확인하세요.';
+            sampleErrorBox.classList.remove('d-none');
+          }
+        });
+
+        resetSampleButton.addEventListener('click', function () {
+          Object.keys(sampleState).forEach(function (key) {
+            delete sampleState[key];
+          });
+          Object.assign(sampleState, deepClone(defaultSample));
+          sampleEditor.value = JSON.stringify(sampleState, null, 2);
+          sampleErrorBox.classList.add('d-none');
+          updateHiddenInputs();
+          renderPreview();
+        });
+
+        contentInput.addEventListener('input', renderPreview);
+        templateForm.addEventListener('submit', function () {
+          syncContentFromEditor();
+          updateHiddenInputs();
+        });
+
+        initEditor();
+        renderSections();
+        updateHiddenInputs();
+        renderPreview();
+      })();
+    </script>
+  </body>
+</html>
