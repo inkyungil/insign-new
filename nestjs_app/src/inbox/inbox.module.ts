@@ -6,11 +6,13 @@ import { InboxMessage } from "./inbox-message.entity";
 import { InboxService } from "./inbox.service";
 import { InboxController } from "./inbox.controller";
 import { EncryptionService } from "../common/encryption.service";
+import { PushTokensModule } from "../push-tokens/push-tokens.module";
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([InboxMessage]),
     ConfigModule,
+    PushTokensModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],

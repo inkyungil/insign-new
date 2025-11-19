@@ -4,7 +4,6 @@ import { ConfigService } from "@nestjs/config";
 import { Repository } from "typeorm";
 import { GoogleAuth, JWTInput } from "google-auth-library";
 import { UserPushToken } from "./push-token.entity";
-import { InboxService } from "../inbox/inbox.service";
 
 const allowedPlatforms = new Set([
   "android",
@@ -25,7 +24,6 @@ export class PushTokensService {
     @InjectRepository(UserPushToken)
     private readonly pushTokenRepository: Repository<UserPushToken>,
     private readonly configService: ConfigService,
-    private readonly inboxService: InboxService,
   ) {
     const credentials = this.loadServiceAccountCredentials();
     this.googleAuth = new GoogleAuth({
@@ -91,6 +89,27 @@ export class PushTokensService {
       where: { userId },
       order: { updatedAt: "DESC" },
     });
+  }
+
+  async findTokensByUserIds(userIds: number[]) {
+    if (!userIds.length) {
+      return [];
+    }
+
+    return this.pushTokenRepository.find({
+      where: userIds.map((userId) => ({ userId })),
+      order: { updatedAt: "DESC" },
+    });
+  }
+
+  async removeTokens(tokens: string[]) {
+    if (!tokens.length) {
+      return;
+    }
+
+    await this.pushTokenRepository.delete(
+      tokens.map((token) => ({ token })),
+    );
   }
 
   async countTokensByUserIds(userIds: number[]) {
@@ -178,23 +197,6 @@ export class PushTokensService {
     }
 
     await this.pushTokenRepository.update(successes, { lastSeenAt: now });
-
-    try {
-      await this.inboxService.createForUser(userId, {
-        kind: payload.category === "contract" ? "notice" : "system",
-        title: payload.title,
-        body: payload.body,
-        tags: ["push", "admin", payload.category],
-        metadata: {
-          source: "admin",
-          category: payload.category,
-          sentTokenCount: successes.length,
-          failedTokenCount: failures.length,
-        },
-      });
-    } catch (error) {
-      this.logger.warn(`푸시 메시지 인박스 기록 실패: ${error}`);
-    }
 
     return {
       success: true,

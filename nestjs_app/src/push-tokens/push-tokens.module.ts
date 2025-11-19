@@ -5,13 +5,12 @@ import { ConfigModule, ConfigService } from "@nestjs/config";
 import { UserPushToken } from "./push-token.entity";
 import { PushTokensService } from "./push-tokens.service";
 import { PushTokensController } from "./push-tokens.controller";
-import { InboxModule } from "../inbox/inbox.module";
+import { PushNotificationsService } from "./push-notifications.service";
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([UserPushToken]),
     ConfigModule,
-    InboxModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -20,8 +19,8 @@ import { InboxModule } from "../inbox/inbox.module";
       }),
     }),
   ],
-  providers: [PushTokensService],
+  providers: [PushTokensService, PushNotificationsService],
   controllers: [PushTokensController],
-  exports: [PushTokensService],
+  exports: [PushTokensService, PushNotificationsService],
 })
 export class PushTokensModule {}

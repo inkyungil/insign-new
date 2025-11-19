@@ -1,18 +1,22 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Brackets, Repository } from "typeorm";
 import { InboxMessage } from "./inbox-message.entity";
 import { CreateInboxMessageDto } from "./dto/create-inbox-message.dto";
 import { UpdateInboxReadDto } from "./dto/update-inbox-read.dto";
 import { EncryptionService } from "../common/encryption.service";
+import { PushNotificationsService } from "../push-tokens/push-notifications.service";
 import { hashEmail, looksLikeEmail, normalizeEmail } from "../users/email.utils";
 
 @Injectable()
 export class InboxService {
+  private readonly logger = new Logger(InboxService.name);
+
   constructor(
     @InjectRepository(InboxMessage)
     private readonly inboxRepository: Repository<InboxMessage>,
     private readonly encryptionService: EncryptionService,
+    private readonly pushNotificationsService: PushNotificationsService,
   ) {}
 
   async createForUser(userId: number, dto: CreateInboxMessageDto) {
@@ -47,7 +51,20 @@ export class InboxService {
     );
 
     const saved = await this.inboxRepository.save(entities);
-    return saved.map((message) => this.decryptMessageUser(message));
+    const decrypted = saved.map((message) => this.decryptMessageUser(message));
+
+    // Send push notification asynchronously
+    this.pushNotificationsService
+      .sendInboxNotification({
+        userIds,
+        title: normalizedTitle,
+        body: normalizedBody,
+        kind: dto.kind,
+        messageIds: saved.map((message) => message.id),
+      })
+      .catch((error) => this.logger.error(`Failed to dispatch push notification: ${error}`));
+
+    return decrypted;
   }
 
   async findAllForUser(userId: number) {
