@@ -75,62 +75,27 @@ export class AdminUsersController {
 
   @Get()
   @Render("admin/users")
-  async index(@Req() request: Request, @Query("userId") rawUserId?: string) {
+  async index(@Req() request: Request) {
     const users = await this.usersService.findAllUsers();
     const counts = await this.pushTokensService.countTokensByUserIds(
       users.map((user) => user.id),
     );
-    let selectedUser = null;
-    let errorMessage: string | null = null;
-
-    if (rawUserId) {
-      const parsedId = Number(rawUserId);
-      if (Number.isNaN(parsedId)) {
-        errorMessage = "잘못된 사용자 ID 입니다.";
-      } else {
-        try {
-          const found = await this.usersService.findOneById(parsedId);
-          const tokens = await this.pushTokensService.findTokensByUserId(
-            found.id,
-          );
-          selectedUser = detailUser(found, tokens);
-        } catch (error) {
-          errorMessage = "선택한 사용자를 찾을 수 없습니다.";
-        }
-      }
-    }
 
     return {
       user: request.user,
       users: users.map((item) =>
         summarizeUser(item, counts.get(item.id) ?? 0),
       ),
-      selectedUser,
-      errorMessage,
     };
   }
 
-  @Get(":id")
-  @Render("admin/users")
-  async detail(@Req() request: Request, @Param("id", ParseIntPipe) id: number) {
-    const [users, selected, tokens] = await Promise.all([
-      this.usersService.findAllUsers(),
+  @Get(":id/json")
+  async detailJson(@Param("id", ParseIntPipe) id: number) {
+    const [selected, tokens] = await Promise.all([
       this.usersService.findOneById(id),
       this.pushTokensService.findTokensByUserId(id),
     ]);
-
-    const counts = await this.pushTokensService.countTokensByUserIds(
-      users.map((user) => user.id),
-    );
-
-    return {
-      user: request.user,
-      users: users.map((item) =>
-        summarizeUser(item, counts.get(item.id) ?? 0),
-      ),
-      selectedUser: detailUser(selected, tokens),
-      errorMessage: null,
-    };
+    return detailUser(selected, tokens);
   }
 
   @Post(":id/password")

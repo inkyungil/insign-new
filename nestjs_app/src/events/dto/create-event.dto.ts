@@ -1,0 +1,7 @@
+export class CreateEventDto {
+  title!: string;
+  content!: string;
+  startDate?: string; // YYYY-MM-DD
+  endDate?: string;   // YYYY-MM-DD
+  isActive?: boolean;
+}

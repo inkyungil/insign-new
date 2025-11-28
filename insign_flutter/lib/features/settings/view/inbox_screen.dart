@@ -289,150 +289,144 @@ class _InboxScreenState extends State<InboxScreen> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
-      body: SafeArea(
-        bottom: false,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 36, 20, 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    '메시지함',
-                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    _subtitleText(),
-                    style: const TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
-                  ),
-                ],
+      appBar: AppBar(
+        title: const Text('메시지함'),
+        foregroundColor: const Color(0xFF111827),
+        backgroundColor: Colors.white,
+        centerTitle: true,
+        elevation: 0,
+      ),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 15, 20, 12),
+            child: Text(
+              _subtitleText(),
+              style: const TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+            child: TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                prefixIcon: const Icon(Icons.search),
+                hintText: '메시지 검색…',
+                isDense: true,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
               ),
             ),
+          ),
+          if (_errorMessage != null)
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-              child: TextField(
-                controller: _searchController,
-                decoration: InputDecoration(
-                  prefixIcon: const Icon(Icons.search),
-                  hintText: '메시지 검색…',
-                  isDense: true,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                ),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              child: _ErrorBanner(
+                message: _errorMessage!,
+                onRetry: () => _loadMessages(),
               ),
             ),
-            if (_errorMessage != null)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                child: _ErrorBanner(
-                  message: _errorMessage!,
-                  onRetry: () => _loadMessages(),
-                ),
-              ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 4),
-                    child: Text(
-                      '카테고리',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF4B5563),
-                      ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 4),
+                  child: Text(
+                    '카테고리',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF4B5563),
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      _FilterChip(
-                        label: '전체',
-                        count: _messages.length,
-                        selected: _filter == '전체',
-                        onTap: () => setState(() => _filter = '전체'),
-                      ),
-                      _FilterChip(
-                        label: '읽지 않음',
-                        count: _messages.where((m) => !m.isRead).length,
-                        selected: _filter == '읽지 않음',
-                        onTap: () => setState(() => _filter = '읽지 않음'),
-                      ),
-                      _FilterChip(
-                        label: '앱 알림',
-                        count: _messages.where(_matchesGeneralCategory).length,
-                        selected: _filter == '앱 알림',
-                        onTap: () => setState(() => _filter = '앱 알림'),
-                      ),
-                      _FilterChip(
-                        label: '계약 진행',
-                        count: _messages.where(_matchesContractCategory).length,
-                        selected: _filter == '계약 진행',
-                        onTap: () => setState(() => _filter = '계약 진행'),
-                      ),
-                      _FilterChip(
-                        label: '공지사항',
-                        count: _messages.where((m) => m.kind == MessageKind.notice).length,
-                        selected: _filter == '공지사항',
-                        onTap: () => setState(() => _filter = '공지사항'),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    _FilterChip(
+                      label: '전체',
+                      count: _messages.length,
+                      selected: _filter == '전체',
+                      onTap: () => setState(() => _filter = '전체'),
+                    ),
+                    _FilterChip(
+                      label: '읽지 않음',
+                      count: _messages.where((m) => !m.isRead).length,
+                      selected: _filter == '읽지 않음',
+                      onTap: () => setState(() => _filter = '읽지 않음'),
+                    ),
+                    _FilterChip(
+                      label: '앱 알림',
+                      count: _messages.where(_matchesGeneralCategory).length,
+                      selected: _filter == '앱 알림',
+                      onTap: () => setState(() => _filter = '앱 알림'),
+                    ),
+                    _FilterChip(
+                      label: '계약 진행',
+                      count: _messages.where(_matchesContractCategory).length,
+                      selected: _filter == '계약 진행',
+                      onTap: () => setState(() => _filter = '계약 진행'),
+                    ),
+                    _FilterChip(
+                      label: '공지사항',
+                      count: _messages.where((m) => m.kind == MessageKind.notice).length,
+                      selected: _filter == '공지사항',
+                      onTap: () => setState(() => _filter = '공지사항'),
+                    ),
+                  ],
+                ),
+              ],
             ),
-            const SizedBox(height: 8),
-            Expanded(
-              child: RefreshIndicator(
-                color: Theme.of(context).colorScheme.primary,
-                onRefresh: () => _loadMessages(isRefresh: true),
-                child: _loading && filtered.isEmpty
-                    ? const Center(
-                        child: Padding(
-                          padding: EdgeInsets.only(top: 80),
-                          child: CircularProgressIndicator(),
+          ),
+          const SizedBox(height: 8),
+          Expanded(
+            child: RefreshIndicator(
+              color: Theme.of(context).colorScheme.primary,
+              onRefresh: () => _loadMessages(isRefresh: true),
+              child: _loading && filtered.isEmpty
+                  ? const Center(
+                      child: Padding(
+                        padding: EdgeInsets.only(top: 80),
+                        child: CircularProgressIndicator(),
+                      ),
+                    )
+                  : filtered.isEmpty
+                      ? const _EmptyState()
+                      : ListView.separated(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          itemCount: filtered.length,
+                          separatorBuilder: (_, __) => const SizedBox(height: 8),
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          itemBuilder: (context, index) {
+                            final message = filtered[index];
+                            return Dismissible(
+                              key: Key('${message.id}'),
+                              direction: DismissDirection.endToStart,
+                              background: Container(
+                                alignment: Alignment.centerRight,
+                                padding: const EdgeInsets.symmetric(horizontal: 20),
+                                decoration: BoxDecoration(
+                                  color: Colors.red.shade400,
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: const Icon(Icons.delete_outline, color: Colors.white),
+                              ),
+                              onDismissed: (_) => _handleDelete(message),
+                              child: _MessageTile(
+                                message: message,
+                                onTap: () => _markMessageRead(message),
+                              ),
+                            );
+                          },
                         ),
-                      )
-                    : filtered.isEmpty
-                        ? const _EmptyState()
-                        : ListView.separated(
-                            physics: const AlwaysScrollableScrollPhysics(),
-                            itemCount: filtered.length,
-                            separatorBuilder: (_, __) => const SizedBox(height: 8),
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            itemBuilder: (context, index) {
-                              final message = filtered[index];
-                              return Dismissible(
-                                key: Key('${message.id}'),
-                                direction: DismissDirection.endToStart,
-                                background: Container(
-                                  alignment: Alignment.centerRight,
-                                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                                  decoration: BoxDecoration(
-                                    color: Colors.red.shade400,
-                                    borderRadius: BorderRadius.circular(16),
-                                  ),
-                                  child: const Icon(Icons.delete_outline, color: Colors.white),
-                                ),
-                                onDismissed: (_) => _handleDelete(message),
-                                child: _MessageTile(
-                                  message: message,
-                                  onTap: () => _markMessageRead(message),
-                                ),
-                              );
-                            },
-                          ),
-              ),
             ),
-            const SizedBox(height: 16),
-          ],
-        ),
+          ),
+          const SizedBox(height: 16),
+        ],
       ),
     );
   }

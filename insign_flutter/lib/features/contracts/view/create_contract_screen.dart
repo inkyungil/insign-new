@@ -6,18 +6,23 @@ import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart';
 import 'package:intl/intl.dart';
 import 'package:insign/core/constants.dart';
+import 'package:insign/data/auth_repository.dart';
 import 'package:insign/data/contract_repository.dart';
 import 'package:insign/data/services/api_client.dart';
 import 'package:insign/data/services/session_service.dart';
 import 'package:insign/data/template_repository.dart';
+import 'package:insign/features/auth/cubit/auth_cubit.dart';
 import 'package:insign/features/templates/widgets/template_preview_modal.dart';
 import 'package:insign/models/template_form.dart';
 import 'package:insign/models/template.dart';
+import 'package:insign/models/user.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:signature/signature.dart';
 
 class CreateContractScreen extends StatefulWidget {
@@ -70,11 +75,15 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
   // Form controllers
   final TextEditingController _contractNameController = TextEditingController();
   final TextEditingController _clientNameController = TextEditingController();
-  final TextEditingController _clientContactController = TextEditingController();
+  final TextEditingController _clientContactController =
+      TextEditingController();
   final TextEditingController _clientEmailController = TextEditingController();
-  final TextEditingController _performerNameController = TextEditingController();
-  final TextEditingController _performerContactController = TextEditingController();
-  final TextEditingController _performerEmailController = TextEditingController();
+  final TextEditingController _performerNameController =
+      TextEditingController();
+  final TextEditingController _performerContactController =
+      TextEditingController();
+  final TextEditingController _performerEmailController =
+      TextEditingController();
   final TextEditingController _amountController = TextEditingController();
   final TextEditingController _detailsController = TextEditingController();
 
@@ -110,12 +119,17 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
   void initState() {
     super.initState();
     _includeAmount = _amountController.text.isNotEmpty;
+    _loadUserInfo();
     _registerAuthorFieldBindings();
     if (widget.templateId != null) {
       _loadTemplate(widget.templateId!);
     } else {
       _loadDefaultTemplate();
     }
+    // 임시 저장 불러오기 (템플릿 로딩 후)
+    Future.delayed(const Duration(milliseconds: 500), () {
+      _loadDraft();
+    });
   }
 
   @override
@@ -171,6 +185,22 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
     );
   }
 
+  void _loadUserInfo() {
+    final authCubit = context.read<AuthCubit>();
+    final user = authCubit.currentUser;
+
+    if (user != null) {
+      // 로그인한 사용자 정보로 갑(작성자) 정보 자동 채우기
+      if (user.displayName != null && user.displayName!.isNotEmpty) {
+        _clientNameController.text = user.displayName!;
+      }
+      if (user.email.isNotEmpty) {
+        _clientEmailController.text = user.email;
+      }
+      // 연락처는 User 모델에 없으므로 사용자가 직접 입력해야 함
+    }
+  }
+
   Future<void> _loadTemplate(int templateId) async {
     setState(() {
       _templateLoading = true;
@@ -199,8 +229,7 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
       final message = error.toString().replaceFirst('Exception: ', '');
       setState(() {
         _templateLoading = false;
-        _templateError =
-            message.isEmpty ? '템플릿 정보를 불러오지 못했습니다.' : message;
+        _templateError = message.isEmpty ? '템플릿 정보를 불러오지 못했습니다.' : message;
       });
     }
   }
@@ -231,6 +260,108 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
       if (mounted) {
         _loadTemplate(5);
       }
+    }
+  }
+
+  // 임시 저장 기능
+  Future<void> _saveDraft() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final draftKey = 'contract_draft_${widget.templateId ?? "default"}';
+
+      final draftData = {
+        'contractName': _contractNameController.text,
+        'clientName': _clientNameController.text,
+        'clientContact': _clientContactController.text,
+        'clientEmail': _clientEmailController.text,
+        'performerName': _performerNameController.text,
+        'performerContact': _performerContactController.text,
+        'performerEmail': _performerEmailController.text,
+        'amount': _amountController.text,
+        'details': _detailsController.text,
+        'includeAmount': _includeAmount,
+        'startDate': _startDate?.toIso8601String(),
+        'endDate': _endDate?.toIso8601String(),
+        'currentStep': _currentStep,
+        'timestamp': DateTime.now().toIso8601String(),
+      };
+
+      await prefs.setString(draftKey, jsonEncode(draftData));
+
+      if (mounted) {
+        Fluttertoast.showToast(
+          msg: '임시 저장되었습니다',
+          toastLength: Toast.LENGTH_SHORT,
+          gravity: ToastGravity.BOTTOM,
+          backgroundColor: const Color(0xFF4CAF50),
+          textColor: Colors.white,
+        );
+      }
+    } catch (error) {
+      if (mounted) {
+        Fluttertoast.showToast(
+          msg: '임시 저장에 실패했습니다',
+          toastLength: Toast.LENGTH_SHORT,
+          gravity: ToastGravity.BOTTOM,
+          backgroundColor: Colors.red,
+          textColor: Colors.white,
+        );
+      }
+    }
+  }
+
+  Future<void> _loadDraft() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final draftKey = 'contract_draft_${widget.templateId ?? "default"}';
+      final draftJson = prefs.getString(draftKey);
+
+      if (draftJson == null || draftJson.isEmpty) return;
+
+      final draftData = jsonDecode(draftJson) as Map<String, dynamic>;
+
+      setState(() {
+        _contractNameController.text = draftData['contractName'] ?? '';
+        _clientNameController.text = draftData['clientName'] ?? '';
+        _clientContactController.text = draftData['clientContact'] ?? '';
+        _clientEmailController.text = draftData['clientEmail'] ?? '';
+        _performerNameController.text = draftData['performerName'] ?? '';
+        _performerContactController.text = draftData['performerContact'] ?? '';
+        _performerEmailController.text = draftData['performerEmail'] ?? '';
+        _amountController.text = draftData['amount'] ?? '';
+        _detailsController.text = draftData['details'] ?? '';
+        _includeAmount = draftData['includeAmount'] ?? false;
+
+        if (draftData['startDate'] != null) {
+          _startDate = DateTime.tryParse(draftData['startDate']);
+        }
+        if (draftData['endDate'] != null) {
+          _endDate = DateTime.tryParse(draftData['endDate']);
+        }
+        _currentStep = draftData['currentStep'] ?? 0;
+      });
+
+      if (mounted) {
+        Fluttertoast.showToast(
+          msg: '임시 저장된 내용을 불러왔습니다',
+          toastLength: Toast.LENGTH_SHORT,
+          gravity: ToastGravity.BOTTOM,
+          backgroundColor: const Color(0xFF4F46E5),
+          textColor: Colors.white,
+        );
+      }
+    } catch (error) {
+      // 임시 저장 불러오기 실패는 조용히 처리
+    }
+  }
+
+  Future<void> _clearDraft() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final draftKey = 'contract_draft_${widget.templateId ?? "default"}';
+      await prefs.remove(draftKey);
+    } catch (error) {
+      // 조용히 처리
     }
   }
 
@@ -364,6 +495,38 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
             ..text = ''
             ..selection = const TextSelection.collapsed(offset: 0);
         }
+
+        _applyTemplateFieldDefault(field);
+      }
+    }
+  }
+
+  void _applyTemplateFieldDefault(TemplateFieldDefinition field) {
+    final defaultValue = field.defaultValue;
+    if (defaultValue == null || _templateFieldValues.containsKey(field.id)) {
+      return;
+    }
+    final type = field.type.toLowerCase();
+    if (type == 'checkbox') {
+      if (_isSingleCheckboxField(field)) {
+        _templateFieldValues[field.id] = _coerceBoolValue(defaultValue);
+      } else {
+        final defaults = _coerceCheckboxDefaultValues(defaultValue);
+        if (defaults.isNotEmpty) {
+          _templateCheckboxValues[field.id] = defaults.toSet();
+          _templateFieldValues[field.id] = defaults;
+        }
+      }
+      return;
+    }
+
+    _templateFieldValues[field.id] = defaultValue;
+    if (_isTextInputField(type)) {
+      final controller = _templateFieldControllers[field.id];
+      if (controller != null) {
+        controller
+          ..text = defaultValue.toString()
+          ..selection = TextSelection.collapsed(offset: controller.text.length);
       }
     }
   }
@@ -454,6 +617,37 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
     }.contains(type);
   }
 
+  bool _isSingleCheckboxField(TemplateFieldDefinition field) {
+    return field.type.toLowerCase() == 'checkbox' && field.options.isEmpty;
+  }
+
+  bool _coerceBoolValue(dynamic value) {
+    if (value is bool) {
+      return value;
+    }
+    if (value is num) {
+      return value != 0;
+    }
+    if (value is String) {
+      final normalized = value.trim().toLowerCase();
+      return normalized == 'true' || normalized == '1' || normalized == 'yes';
+    }
+    return false;
+  }
+
+  List<String> _coerceCheckboxDefaultValues(dynamic value) {
+    if (value is List) {
+      return value
+          .map((item) => item.toString())
+          .where((item) => item.trim().isNotEmpty)
+          .toList();
+    }
+    if (value is String && value.trim().isNotEmpty) {
+      return [value.trim()];
+    }
+    return const [];
+  }
+
   String _displayTemplateFieldLabel(TemplateFieldDefinition field) {
     return _isResidentRegistrationField(field) ? '주민번호' : field.label;
   }
@@ -511,7 +705,8 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
     });
   }
 
-  void _updateTemplateSelectValue(TemplateFieldDefinition field, String? value) {
+  void _updateTemplateSelectValue(
+      TemplateFieldDefinition field, String? value) {
     setState(() {
       if (value == null || value.isEmpty) {
         _templateFieldValues.remove(field.id);
@@ -522,7 +717,8 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
     });
   }
 
-  void _toggleTemplateCheckboxValue(TemplateFieldDefinition field, String optionValue, bool selected) {
+  void _toggleTemplateCheckboxValue(
+      TemplateFieldDefinition field, String optionValue, bool selected) {
     final current = _templateCheckboxValues[field.id] ?? <String>{};
     if (selected) {
       current.add(optionValue);
@@ -541,7 +737,16 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
     });
   }
 
-  TextEditingController _getTemplateTextController(TemplateFieldDefinition field) {
+  void _updateTemplateBooleanCheckbox(
+      TemplateFieldDefinition field, bool value) {
+    setState(() {
+      _templateFieldValues[field.id] = value;
+      _templateFieldErrors.remove(field.id);
+    });
+  }
+
+  TextEditingController _getTemplateTextController(
+      TemplateFieldDefinition field) {
     if (_templateFieldControllers.containsKey(field.id)) {
       return _templateFieldControllers[field.id]!;
     }
@@ -645,9 +850,8 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
   Widget _buildStepChip(int index) {
     final bool isActive = index == _currentStep;
     final bool isCompleted = index < _currentStep;
-    final Color strokeColor = isActive || isCompleted
-        ? primaryColor
-        : const Color(0xFFD1D5DB);
+    final Color strokeColor =
+        isActive || isCompleted ? primaryColor : const Color(0xFFD1D5DB);
     final Color backgroundColor = isCompleted
         ? primaryColor
         : (isActive ? primaryColor.withOpacity(0.1) : Colors.white);
@@ -685,7 +889,8 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: badgeBackground,
-                border: Border.all(color: strokeColor, width: isCompleted ? 0 : 0.8),
+                border: Border.all(
+                    color: strokeColor, width: isCompleted ? 0 : 0.8),
               ),
               alignment: Alignment.center,
               child: Text(
@@ -754,12 +959,13 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
       _buildSectionCard(
         title: '갑 (의뢰인)',
         icon: Icons.person_outline,
-        subtitle: '계약을 체결하는 갑의 정보를 입력하세요.',
+        subtitle: '로그인한 회원 정보로 자동 입력됩니다.',
         children: [
           _buildTextField(
             controller: _clientNameController,
             label: '이름',
             hint: '홍길동',
+            readOnly: true,
             validator: (value) {
               if (value == null || value.trim().isEmpty) {
                 return '갑 이름을 입력해주세요';
@@ -769,18 +975,19 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
           ),
           const SizedBox(height: 12),
           _buildTextField(
+            controller: _clientEmailController,
+            label: '이메일',
+            hint: 'client@example.com',
+            keyboardType: TextInputType.emailAddress,
+            readOnly: true,
+          ),
+          const SizedBox(height: 12),
+          _buildTextField(
             controller: _clientContactController,
             label: '연락처',
             hint: '010-1234-5678',
             keyboardType: TextInputType.phone,
             inputFormatters: [_phoneNumberFormatter],
-          ),
-          const SizedBox(height: 12),
-          _buildTextField(
-            controller: _clientEmailController,
-            label: '이메일',
-            hint: 'client@example.com',
-            keyboardType: TextInputType.emailAddress,
           ),
         ],
       ),
@@ -950,9 +1157,8 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
     return _buildSectionCard(
       title: title,
       icon: Icons.work_outline,
-      subtitle: showEmailReminder
-          ? '서명 요청 메일을 발송하려면 수행자 이름과 이메일을 모두 입력하세요.'
-          : null,
+      subtitle:
+          showEmailReminder ? '서명 요청 메일을 발송하려면 수행자 이름과 이메일을 모두 입력하세요.' : null,
       children: [
         _buildTextField(
           controller: _performerNameController,
@@ -1014,7 +1220,9 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
           const SizedBox(height: 12),
           if (widget.templateId != null)
             OutlinedButton.icon(
-              onPressed: _templateLoading ? null : () => _loadTemplate(widget.templateId!),
+              onPressed: _templateLoading
+                  ? null
+                  : () => _loadTemplate(widget.templateId!),
               icon: const Icon(Icons.refresh, size: 18, color: primaryColor),
               label: const Text('다시 시도'),
             ),
@@ -1118,7 +1326,8 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
           decoration: BoxDecoration(
             color: isActive ? primaryColor : Colors.white,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: isActive ? primaryColor : const Color(0xFFE2E8F0)),
+            border: Border.all(
+                color: isActive ? primaryColor : const Color(0xFFE2E8F0)),
           ),
           alignment: Alignment.center,
           child: Text(
@@ -1157,7 +1366,8 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
         Row(
           children: [
             OutlinedButton.icon(
-              onPressed: _signatureController.isEmpty ? null : _handleClearSignature,
+              onPressed:
+                  _signatureController.isEmpty ? null : _handleClearSignature,
               icon: const Icon(Icons.refresh, size: 18),
               label: const Text('다시 쓰기'),
             ),
@@ -1203,7 +1413,8 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
               SizedBox(height: 6),
               Text(
                 'PNG, JPG 형식을 권장하며 2MB 이하 이미지를 사용해주세요. 배경이 투명한 파일이면 더 깔끔하게 표시됩니다.',
-                style: TextStyle(fontSize: 12, color: Color(0xFF64748B), height: 1.4),
+                style: TextStyle(
+                    fontSize: 12, color: Color(0xFF64748B), height: 1.4),
               ),
             ],
           ),
@@ -1218,7 +1429,8 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
             foregroundColor: Colors.white,
           ),
         ),
-        if (_authorSignatureBytes != null && _authorSignatureSource == 'upload') ...[
+        if (_authorSignatureBytes != null &&
+            _authorSignatureSource == 'upload') ...[
           const SizedBox(height: 8),
           const Text(
             '업로드한 서명이 적용되었습니다.',
@@ -1322,7 +1534,8 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
       values[key] = normalized ?? '';
     }
 
-    final schema = _templateSchema ?? TemplateFormSchema.tryParse(template.formSchema);
+    final schema =
+        _templateSchema ?? TemplateFormSchema.tryParse(template.formSchema);
     if (schema != null) {
       for (final section in schema.sections) {
         for (final field in section.fields) {
@@ -1348,8 +1561,10 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
     assign('performerName', _performerNameController.text.trim());
     assign('performerContact', _performerContactController.text.trim());
     assign('performerEmail', _performerEmailController.text.trim());
-    assign('startDate', _startDate != null ? _dateFormatter.format(_startDate!) : null);
-    assign('endDate', _endDate != null ? _dateFormatter.format(_endDate!) : null);
+    assign('startDate',
+        _startDate != null ? _dateFormatter.format(_startDate!) : null);
+    assign(
+        'endDate', _endDate != null ? _dateFormatter.format(_endDate!) : null);
     assign('amount', _includeAmount ? _amountController.text.trim() : null);
     final detailsText = _detailsController.text.trim();
     if (detailsText.isNotEmpty) {
@@ -1364,7 +1579,8 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
     assign('borrowerEmail', _performerEmailController.text.trim());
 
     if (_authorSignatureBytes != null) {
-      final dataUrl = 'data:image/png;base64,${base64Encode(_authorSignatureBytes!)}';
+      final dataUrl =
+          'data:image/png;base64,${base64Encode(_authorSignatureBytes!)}';
       for (final key in const [
         'clientSignatureImage',
         'clientSignature',
@@ -1375,7 +1591,8 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
         'employerSignatureImage',
         'employerSignature',
       ]) {
-        assign(key, '<img src="$dataUrl" style="max-height:80px;max-width:100%;object-fit:contain;" />');
+        assign(key,
+            '<img src="$dataUrl" style="max-height:80px;max-width:100%;object-fit:contain;" />');
       }
       final signedAt = _authorSignatureAppliedAt ?? DateTime.now();
       final today = _dateFormatter.format(signedAt);
@@ -1472,7 +1689,8 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
                 const SizedBox(height: 4),
                 Text(
                   message,
-                  style: const TextStyle(fontSize: 13, color: Color(0xFF475569), height: 1.4),
+                  style: const TextStyle(
+                      fontSize: 13, color: Color(0xFF475569), height: 1.4),
                 ),
               ],
             ),
@@ -1530,7 +1748,10 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
                             Expanded(
                               child: Text(
                                 _formatTemplateSummaryValue(field),
-                                style: const TextStyle(fontSize: 13, color: Color(0xFF111827), height: 1.4),
+                                style: const TextStyle(
+                                    fontSize: 13,
+                                    color: Color(0xFF111827),
+                                    height: 1.4),
                               ),
                             ),
                           ],
@@ -1576,7 +1797,8 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
                           const Expanded(
                             child: Text(
                               '서명자가 입력',
-                              style: TextStyle(fontSize: 13, color: Color(0xFF94A3B8)),
+                              style: TextStyle(
+                                  fontSize: 13, color: Color(0xFF94A3B8)),
                             ),
                           ),
                         ],
@@ -1613,12 +1835,16 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
                         color: Color(0xFF111827),
                       ),
                     ),
-                    if (section.description != null && section.description!.isNotEmpty)
+                    if (section.description != null &&
+                        section.description!.isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.only(top: 4),
                         child: Text(
                           section.description!,
-                          style: const TextStyle(fontSize: 13, color: Color(0xFF64748B), height: 1.4),
+                          style: const TextStyle(
+                              fontSize: 13,
+                              color: Color(0xFF64748B),
+                              height: 1.4),
                         ),
                       ),
                   ],
@@ -1708,6 +1934,36 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
     }
 
     if (type == 'checkbox') {
+      if (_isSingleCheckboxField(field)) {
+        final currentValue = (_templateFieldValues[field.id] as bool?) ??
+            _coerceBoolValue(field.defaultValue);
+        return Align(
+          alignment: Alignment.centerLeft,
+          child: InkWell(
+            onTap: field.readonly
+                ? null
+                : () => _updateTemplateBooleanCheckbox(field, !currentValue),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Checkbox(
+                  value: currentValue,
+                  onChanged: field.readonly
+                      ? null
+                      : (value) =>
+                          _updateTemplateBooleanCheckbox(field, value ?? false),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  currentValue ? '선택됨' : '선택 안 됨',
+                  style: const TextStyle(fontSize: 13),
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+
       final options = field.options;
       final selected = _templateCheckboxValues[field.id] ?? <String>{};
       return Wrap(
@@ -1737,8 +1993,8 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
               (option) => ChoiceChip(
                 selected: currentValue == option.value,
                 label: Text(option.label),
-                onSelected: (selected) =>
-                    _updateTemplateSelectValue(field, selected ? option.value : null),
+                onSelected: (selected) => _updateTemplateSelectValue(
+                    field, selected ? option.value : null),
               ),
             )
             .toList(),
@@ -1769,7 +2025,9 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
       final controller = _getTemplateTextController(field);
 
       // readonly 필드인 경우 자동으로 현재 날짜 설정
-      if (field.readonly && (_templateFieldValues[field.id] == null || _templateFieldValues[field.id].toString().isEmpty)) {
+      if (field.readonly &&
+          (_templateFieldValues[field.id] == null ||
+              _templateFieldValues[field.id].toString().isEmpty)) {
         final today = DateTime.now().toIso8601String().split('T')[0];
         _templateFieldValues[field.id] = today;
       }
@@ -1785,11 +2043,9 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
         controller: controller,
         readOnly: true,
         enabled: !field.readonly, // readonly 필드는 비활성화
-        decoration: _templateInputDecoration(
-          field.readonly
+        decoration: _templateInputDecoration(field.readonly
             ? (field.helperText ?? '자동 입력됨')
-            : (field.placeholder ?? 'YYYY-MM-DD')
-        ),
+            : (field.placeholder ?? 'YYYY-MM-DD')),
         onTap: field.readonly ? null : () => _pickTemplateDate(field),
       );
     }
@@ -1815,7 +2071,8 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
         keyboardType = TextInputType.multiline;
         break;
       case 'number':
-        keyboardType = const TextInputType.numberWithOptions(signed: true, decimal: false);
+        keyboardType =
+            const TextInputType.numberWithOptions(signed: true, decimal: false);
         formatters = [FilteringTextInputFormatter.allow(RegExp(r'[0-9-]'))];
         break;
       case 'currency':
@@ -1838,12 +2095,15 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
       inputFormatters: formatters,
       enabled: !field.readonly,
       decoration: _templateInputDecoration(field.placeholder ?? ''),
-      onChanged: field.readonly ? null : (value) => _updateTemplateTextValue(field, value),
+      onChanged: field.readonly
+          ? null
+          : (value) => _updateTemplateTextValue(field, value),
     );
   }
 
   Widget _buildResidentRegistrationField(TemplateFieldDefinition field) {
-    final controller = _residentControllers.putIfAbsent(field.id, () => TextEditingController());
+    final controller = _residentControllers.putIfAbsent(
+        field.id, () => TextEditingController());
     final currentRaw = _templateFieldValues[field.id]?.toString();
     if (currentRaw != null && currentRaw.isNotEmpty) {
       final digits = _extractResidentDigits(currentRaw);
@@ -1874,7 +2134,8 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
   }
 
   Widget _buildBusinessRegistrationField(TemplateFieldDefinition field) {
-    final controller = _businessControllers.putIfAbsent(field.id, () => TextEditingController());
+    final controller = _businessControllers.putIfAbsent(
+        field.id, () => TextEditingController());
     final currentRaw = _templateFieldValues[field.id]?.toString();
     if (currentRaw != null && currentRaw.isNotEmpty) {
       final digits = _extractBusinessDigits(currentRaw);
@@ -1924,7 +2185,8 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
     });
   }
 
-  void _onBusinessRegistrationChanged(TemplateFieldDefinition field, String digits) {
+  void _onBusinessRegistrationChanged(
+      TemplateFieldDefinition field, String digits) {
     String limited = digits;
     if (limited.length > 10) {
       limited = limited.substring(0, 10);
@@ -1934,7 +2196,8 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
       if (limited.isEmpty) {
         _templateFieldValues.remove(field.id);
       } else {
-        _templateFieldValues[field.id] = _formatBusinessRegistrationDigits(limited);
+        _templateFieldValues[field.id] =
+            _formatBusinessRegistrationDigits(limited);
       }
       _templateFieldErrors.remove(field.id);
     });
@@ -2020,13 +2283,18 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
       return '-';
     }
     if (field.type == 'checkbox') {
+      if (_isSingleCheckboxField(field) && value is bool) {
+        return value ? '예' : '아니오';
+      }
       final list = value is List ? value.cast<String>() : <String>[];
       if (list.isEmpty) return '-';
       return list
-          .map((item) => field.options.firstWhere(
+          .map((item) => field.options
+              .firstWhere(
                 (option) => option.value == item,
                 orElse: () => TemplateFieldOption(label: item, value: item),
-              ).label)
+              )
+              .label)
           .join(', ');
     }
     if (_isResidentRegistrationField(field) && value is String) {
@@ -2034,10 +2302,12 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
       return _maskResidentDigits(digits);
     }
     if ((field.type == 'select' || field.type == 'radio') && value is String) {
-      return field.options.firstWhere(
-        (option) => option.value == value,
-        orElse: () => TemplateFieldOption(label: value, value: value),
-      ).label;
+      return field.options
+          .firstWhere(
+            (option) => option.value == value,
+            orElse: () => TemplateFieldOption(label: value, value: value),
+          )
+          .label;
     }
     if (value is List) {
       return value.join(', ');
@@ -2084,20 +2354,33 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
     return true;
   }
 
-  String? _validateTemplateFieldValue(TemplateFieldDefinition field, dynamic value) {
+  String? _validateTemplateFieldValue(
+      TemplateFieldDefinition field, dynamic value) {
     if (value == null) {
       return null;
     }
 
     final type = field.type.toLowerCase();
-    final stringValue = value is String ? value.trim() : value.toString().trim();
+
+    if (type == 'checkbox' && _isSingleCheckboxField(field)) {
+      final boolValue = value is bool ? value : _coerceBoolValue(value);
+      if (field.required && !boolValue) {
+        return '${field.label}에 동의해 주세요.';
+      }
+      return null;
+    }
+
+    final stringValue =
+        value is String ? value.trim() : value.toString().trim();
 
     final validation = field.validation;
     if (validation != null) {
-      if (validation.minLength != null && stringValue.length < validation.minLength!) {
+      if (validation.minLength != null &&
+          stringValue.length < validation.minLength!) {
         return '${field.label}은(는) 최소 ${validation.minLength}자 이상 입력해 주세요.';
       }
-      if (validation.maxLength != null && stringValue.length > validation.maxLength!) {
+      if (validation.maxLength != null &&
+          stringValue.length > validation.maxLength!) {
         return '${field.label}은(는) 최대 ${validation.maxLength}자까지 입력할 수 있습니다.';
       }
       if (validation.pattern != null && validation.pattern!.isNotEmpty) {
@@ -2112,7 +2395,9 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
       }
     }
 
-    if (type == 'email' && stringValue.isNotEmpty && !_isValidEmail(stringValue)) {
+    if (type == 'email' &&
+        stringValue.isNotEmpty &&
+        !_isValidEmail(stringValue)) {
       return '${field.label} 이메일 형식을 확인해 주세요.';
     }
 
@@ -2163,7 +2448,12 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
     }
     final type = field.type.toLowerCase();
     if (type == 'checkbox') {
-      final list = value is List ? value : (_templateCheckboxValues[field.id]?.toList() ?? []);
+      if (_isSingleCheckboxField(field)) {
+        return value is bool ? value : _coerceBoolValue(value);
+      }
+      final list = value is List
+          ? value
+          : (_templateCheckboxValues[field.id]?.toList() ?? []);
       return list.isNotEmpty;
     }
     if (value is String) {
@@ -2227,11 +2517,12 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
         _startDate != null ? _dateFormatter.format(_startDate!) : '-';
     final String endDateText =
         _endDate != null ? _dateFormatter.format(_endDate!) : '-';
-    final String amountText = _includeAmount && _amountController.text.trim().isNotEmpty
-        ? NumberFormat.decimalPattern('ko_KR').format(
-            int.tryParse(_amountController.text.trim()) ?? 0,
-          )
-        : '-';
+    final String amountText =
+        _includeAmount && _amountController.text.trim().isNotEmpty
+            ? NumberFormat.decimalPattern('ko_KR').format(
+                int.tryParse(_amountController.text.trim()) ?? 0,
+              )
+            : '-';
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -2239,7 +2530,8 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(22),
         boxShadow: const [
-          BoxShadow(color: Color(0x14111827), blurRadius: 12, offset: Offset(0, 8)),
+          BoxShadow(
+              color: Color(0x14111827), blurRadius: 12, offset: Offset(0, 8)),
         ],
       ),
       child: Column(
@@ -2254,7 +2546,8 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
                   color: const Color(0x1F4F46E5),
                   borderRadius: BorderRadius.circular(16),
                 ),
-                child: const Icon(Icons.description_outlined, color: primaryColor),
+                child:
+                    const Icon(Icons.description_outlined, color: primaryColor),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -2273,11 +2566,9 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      widget.templateId != null
-                          ? '템플릿 기반 계약'
-                          : '새 계약서 초안',
-                      style:
-                          const TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+                      widget.templateId != null ? '템플릿 기반 계약' : '새 계약서 초안',
+                      style: const TextStyle(
+                          fontSize: 13, color: Color(0xFF64748B)),
                     ),
                   ],
                 ),
@@ -2337,7 +2628,8 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(22),
         boxShadow: const [
-          BoxShadow(color: Color(0x14111827), blurRadius: 12, offset: Offset(0, 8)),
+          BoxShadow(
+              color: Color(0x14111827), blurRadius: 12, offset: Offset(0, 8)),
         ],
       ),
       child: Column(
@@ -2362,7 +2654,8 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
             ),
             alignment: Alignment.center,
             child: _authorSignatureBytes == null
-                ? const Text('서명이 등록되지 않았습니다.', style: TextStyle(color: Color(0xFF94A3B8)))
+                ? const Text('서명이 등록되지 않았습니다.',
+                    style: TextStyle(color: Color(0xFF94A3B8)))
                 : Image.memory(_authorSignatureBytes!, fit: BoxFit.contain),
           ),
           if (_authorSignatureAppliedAt != null) ...[
@@ -2395,7 +2688,8 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(22),
         boxShadow: const [
-          BoxShadow(color: Color(0x14111827), blurRadius: 12, offset: Offset(0, 8)),
+          BoxShadow(
+              color: Color(0x14111827), blurRadius: 12, offset: Offset(0, 8)),
         ],
       ),
       child: Column(
@@ -2470,7 +2764,8 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
                 onPressed: _isSaving ? null : _goToPreviousStep,
                 style: OutlinedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14)),
                 ),
                 child: const Text('이전 단계'),
               ),
@@ -2479,14 +2774,14 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
           ],
           Expanded(
             child: ElevatedButton(
-              onPressed: _isSaving
-                  ? null
-                  : (isLastStep ? _handleSave : _goToNextStep),
+              onPressed:
+                  _isSaving ? null : (isLastStep ? _handleSave : _goToNextStep),
               style: ElevatedButton.styleFrom(
                 backgroundColor: primaryColor,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14)),
               ),
               child: _isSaving
                   ? const SizedBox(
@@ -2498,9 +2793,7 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
                       ),
                     )
                   : Text(
-                      isLastStep
-                          ? (_isTemplateFlow ? '서명 요청' : '저장')
-                          : '다음 단계',
+                      isLastStep ? (_isTemplateFlow ? '서명 요청' : '저장') : '다음 단계',
                     ),
             ),
           ),
@@ -2530,7 +2823,8 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
         if (_isTemplateFlow) {
           return _validateTemplateFields();
         }
-        if (_startDate != null && _endDate != null &&
+        if (_startDate != null &&
+            _endDate != null &&
             _endDate!.isBefore(_startDate!)) {
           _showToast('종료일이 시작일보다 빠릅니다.', isError: true);
           return false;
@@ -2622,12 +2916,192 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
     }
   }
 
+  Future<void> _showLimitExceededDialog(User user) async {
+    final contractsUsed = user.contractsUsedThisMonth;
+    final contractsLimit = user.monthlyContractLimit;
+    final points = user.points;
+    final isPremium = user.isPremium;
+
+    if (isPremium) {
+      // 프리미엄 사용자는 무제한이므로 이 다이얼로그가 나올 수 없음
+      return;
+    }
+
+    if (contractsUsed >= contractsLimit && points < 3) {
+      // 포인트 부족
+      await showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('계약서 작성 제한'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '이번 달 무료 계약서를 모두 사용했습니다.\n($contractsUsed/$contractsLimit개)',
+                style: const TextStyle(fontSize: 15),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF7ED),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.emoji_events_outlined, color: Color(0xFFF59E0B), size: 20),
+                        const SizedBox(width: 8),
+                        Text(
+                          '보유 포인트: $points P',
+                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      '포인트 3개로 계약서 1개를 더 작성할 수 있어요!',
+                      style: TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                '포인트를 모으는 방법:',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                '• 매일 출석 체크: +1 포인트',
+                style: TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
+              ),
+              const Text(
+                '• 다음 달 1일에 자동 충전: 12 포인트',
+                style: TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('닫기'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                context.go('/profile');
+              },
+              child: const Text('출석 체크하러 가기', style: TextStyle(fontWeight: FontWeight.w600)),
+            ),
+          ],
+        ),
+      );
+    } else if (contractsUsed >= contractsLimit && points >= 3) {
+      // 포인트 사용 확인
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('포인트 사용 확인'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '이번 달 무료 계약서를 모두 사용했습니다.\n($contractsUsed/$contractsLimit개)',
+                style: const TextStyle(fontSize: 15),
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFDEEBFF),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.info_outline, color: primaryColor, size: 20),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        '포인트 3개를 사용하여\n계약서 1개를 더 작성하시겠습니까?',
+                        style: const TextStyle(fontSize: 14),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    '현재 보유 포인트:',
+                    style: TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
+                  ),
+                  Text(
+                    '$points P',
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: primaryColor),
+                  ),
+                ],
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    '사용 후 잔여:',
+                    style: TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
+                  ),
+                  Text(
+                    '${points - 3} P',
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('취소'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: primaryColor,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('포인트 사용하기'),
+            ),
+          ],
+        ),
+      );
+
+      if (confirmed != true) {
+        // 사용자가 취소함
+        return;
+      }
+      // 포인트 사용에 동의함 - 계약서 작성 계속 진행
+      // 백엔드에서 자동으로 포인트를 차감하므로 여기서는 아무것도 하지 않음
+    }
+  }
+
   Future<void> _handleSave() async {
     if (!_validateStep(_currentStep)) {
       return;
     }
     if (!_formKey.currentState!.validate()) {
       _showToast('필수 정보를 모두 입력해주세요.', isError: true);
+      return;
+    }
+
+    // 계약서 작성 제한 확인
+    final user = context.read<AuthCubit>().state.user;
+    if (user != null && !user.canCreateContract) {
+      await _showLimitExceededDialog(user);
       return;
     }
 
@@ -2643,7 +3117,8 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
       if (template != null) {
         metadata['templateName'] = template.name;
         final schema = template.formSchema;
-        final schemaVersion = schema is Map<String, dynamic> ? schema['version'] : null;
+        final schemaVersion =
+            schema is Map<String, dynamic> ? schema['version'] : null;
         if (schemaVersion != null) {
           metadata['templateSchemaVersion'] = schemaVersion;
         }
@@ -2659,9 +3134,11 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
       if (_authorSignatureBytes != null) {
         // 갑(계약 작성자)의 서명 정보 저장
         metadata['authorSignatureImage'] = base64Encode(_authorSignatureBytes!);
-        metadata['authorSignatureSource'] = _authorSignatureSource ?? _signatureMode;
+        metadata['authorSignatureSource'] =
+            _authorSignatureSource ?? _signatureMode;
         if (_authorSignatureAppliedAt != null) {
-          metadata['authorSignatureDate'] = _dateFormatter.format(_authorSignatureAppliedAt!);
+          metadata['authorSignatureDate'] =
+              _dateFormatter.format(_authorSignatureAppliedAt!);
         }
       }
 
@@ -2686,7 +3163,8 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
         performerEmail: _performerEmailController.text.trim().isNotEmpty
             ? _performerEmailController.text.trim()
             : null,
-        startDate: _startDate != null ? _dateFormatter.format(_startDate!) : null,
+        startDate:
+            _startDate != null ? _dateFormatter.format(_startDate!) : null,
         endDate: _endDate != null ? _dateFormatter.format(_endDate!) : null,
         amount: _includeAmount && _amountController.text.trim().isNotEmpty
             ? _amountController.text.trim()
@@ -2703,6 +3181,9 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
       );
 
       if (!mounted) return;
+
+      // 임시 저장 삭제
+      await _clearDraft();
 
       _showToast('계약서가 저장되었습니다.');
       context.pop(true); // true를 반환하여 홈 화면에서 새로고침 가능
@@ -2741,10 +3222,20 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
           onPressed: () => context.pop(),
         ),
         actions: [
+          TextButton.icon(
+            onPressed: _saveDraft,
+            icon: const Icon(Icons.save_outlined,
+                size: 18, color: Color(0xFF6B7280)),
+            label: const Text(
+              '임시 저장',
+              style: TextStyle(color: Color(0xFF6B7280), fontSize: 14),
+            ),
+          ),
           if (_template != null)
             IconButton(
               onPressed: _openTemplatePreview,
-              icon: const Icon(Icons.visibility_outlined, color: Color(0xFF6B7280)),
+              icon: const Icon(Icons.visibility_outlined,
+                  color: Color(0xFF6B7280)),
               tooltip: '템플릿 미리보기',
             ),
         ],
@@ -2834,6 +3325,7 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
     String? Function(String?)? validator,
     int maxLines = 1,
     String? suffixText,
+    bool readOnly = false,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -2853,12 +3345,13 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
           inputFormatters: inputFormatters,
           validator: validator,
           maxLines: maxLines,
+          readOnly: readOnly,
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: const TextStyle(color: Color(0xFF9CA3AF)),
             suffixText: suffixText,
             filled: true,
-            fillColor: const Color(0xFFF9FAFB),
+            fillColor: readOnly ? const Color(0xFFE5E7EB) : const Color(0xFFF9FAFB),
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 16,
               vertical: 12,

@@ -1,7 +1,9 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:insign/core/config/api_config.dart';
 import 'package:insign/data/services/api_client.dart';
+import 'package:insign/models/blockchain_verification_result.dart';
 import 'package:insign/models/contract.dart';
 
 class CreateContractPayload {
@@ -193,6 +195,21 @@ class ContractRepository {
       method: 'POST',
       body: payload.toJson(),
       fromJson: (json) => Contract.fromJson(json),
+    );
+  }
+
+  Future<BlockchainVerificationResult> verifyContractPdf({
+    required int id,
+    required Uint8List fileBytes,
+    String? token,
+  }) async {
+    final encoded = base64Encode(fileBytes);
+    return ApiClient.request<BlockchainVerificationResult>(
+      path: '${ApiConfig.contracts}/$id/verify-pdf',
+      method: 'POST',
+      token: token,
+      body: {'fileBase64': encoded},
+      fromJson: (json) => BlockchainVerificationResult.fromJson(json),
     );
   }
 }

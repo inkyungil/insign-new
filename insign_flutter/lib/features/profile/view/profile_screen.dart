@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:insign/core/constants.dart';
+import 'package:insign/data/auth_repository.dart';
 import 'package:insign/data/contract_repository.dart';
 import 'package:insign/data/services/session_service.dart';
 import 'package:insign/features/auth/cubit/auth_cubit.dart';
 import 'package:insign/models/contract.dart';
+import 'package:insign/models/user.dart';
 import 'package:go_router/go_router.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -17,6 +19,7 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   final ContractRepository _contractRepository = ContractRepository();
+  final AuthRepository _authRepository = AuthRepository();
   final DateFormat _dateFormatter = DateFormat('yyyy.MM.dd');
 
   List<Contract> _contracts = const [];
@@ -25,10 +28,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _isWithdrawing = false;
   String? _errorMessage;
 
+  // 구독 통계
+  User? _userStats;
+  bool _loadingStats = false;
+  bool _checkingIn = false;
+
   @override
   void initState() {
     super.initState();
     _loadContracts();
+    _loadUserStats();
   }
 
   Future<void> _loadContracts() async {
@@ -72,6 +81,99 @@ class _ProfileScreenState extends State<ProfileScreen> {
       }
       return created.year == now.year && created.month == now.month;
     }).length;
+  }
+
+  Future<void> _loadUserStats() async {
+    setState(() {
+      _loadingStats = true;
+    });
+
+    try {
+      final token = await SessionService.getAccessToken();
+      if (token == null) {
+        setState(() {
+          _loadingStats = false;
+        });
+        return;
+      }
+
+      final stats = await _authRepository.getUserStats(token);
+      if (!mounted) return;
+      setState(() {
+        _userStats = stats;
+      });
+    } catch (error) {
+      debugPrint('사용자 통계 로딩 실패: $error');
+    } finally {
+      if (!mounted) return;
+      setState(() {
+        _loadingStats = false;
+      });
+    }
+  }
+
+  Future<void> _handleCheckIn() async {
+    if (_checkingIn) return;
+
+    setState(() {
+      _checkingIn = true;
+    });
+
+    try {
+      final token = await SessionService.getAccessToken();
+      if (token == null) {
+        throw Exception('로그인이 필요합니다');
+      }
+
+      final result = await _authRepository.checkIn(token);
+      final success = result['success'] as bool? ?? false;
+      final message = result['message'] as String? ?? '출석 체크 완료!';
+      final points = result['points'] as int?;
+
+      if (!mounted) return;
+
+      if (success) {
+        // 성공 시 통계 새로고침
+        await _loadUserStats();
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(message),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(message),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (error) {
+      if (!mounted) return;
+      final message = error.toString().replaceFirst('Exception: ', '');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message.isEmpty ? '출석 체크 중 오류가 발생했습니다' : message),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    } finally {
+      if (!mounted) return;
+      setState(() {
+        _checkingIn = false;
+      });
+    }
+  }
+
+  Future<void> _refreshAll() async {
+    await Future.wait([
+      _loadContracts(),
+      _loadUserStats(),
+    ]);
   }
 
   void _handleSettingTap(String key) {
@@ -286,22 +388,45 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget build(BuildContext context) {
     final user = context.watch<AuthCubit>().state.user;
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF6F8FC),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        title: const Text(
-          '마이',
-          style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold, fontSize: 18),
+    final slivers = <Widget>[
+      SliverPadding(
+        padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
+        sliver: SliverToBoxAdapter(
+          child: Row(
+            children: [
+              const Text(
+                '마이',
+                style: TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF111827),
+                ),
+              ),
+              const Spacer(),
+              IconButton(
+                onPressed: () => context.push('/inbox'),
+                icon: const Icon(Icons.notifications_outlined),
+                style: IconButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: primaryColor,
+                ),
+              ),
+            ],
+          ),
         ),
-        centerTitle: true,
       ),
-      body: RefreshIndicator(
-        onRefresh: _loadContracts,
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
+      SliverPadding(
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+        sliver: SliverToBoxAdapter(
+          child: const Text(
+            '내 정보와 설정을 관리할 수 있어요.',
+            style: TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
+          ),
+        ),
+      ),
+      SliverPadding(
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
+        sliver: SliverToBoxAdapter(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -309,10 +434,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
               const SizedBox(height: 20),
               _buildStatsCard(),
               const SizedBox(height: 20),
+              if (user != null) _buildSubscriptionCard(user),
+              if (user != null) const SizedBox(height: 20),
               _buildSettingsCard(),
               const SizedBox(height: 20),
               _buildDangerZone(),
+              const SizedBox(height: 120),
             ],
+          ),
+        ),
+      ),
+    ];
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
+      body: SafeArea(
+        bottom: false,
+        child: RefreshIndicator(
+          color: primaryColor,
+          onRefresh: _refreshAll,
+          child: CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: slivers,
           ),
         ),
       ),
@@ -430,6 +573,126 @@ class _ProfileScreenState extends State<ProfileScreen> {
         Text(
           label,
           style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSubscriptionCard(User user) {
+    final userStats = _userStats ?? user;
+    final isPremium = userStats.isPremium;
+    final contractsUsed = userStats.contractsUsedThisMonth;
+    final contractsLimit = userStats.monthlyContractLimit;
+    final points = userStats.points;
+    final remaining = userStats.remainingFreeContracts;
+    final canCheckIn = userStats.canCheckInToday;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        boxShadow: const [
+          BoxShadow(color: Color(0x14111827), blurRadius: 12, offset: Offset(0, 8)),
+        ],
+      ),
+      padding: const EdgeInsets.fromLTRB(24, 24, 24, 28),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Text(
+                '구독 정보',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: isPremium ? const Color(0xFFDCFCE7) : const Color(0xFFDEEBFF),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  isPremium ? '프리미엄' : '무료',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: isPremium ? const Color(0xFF16A34A) : primaryColor,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          _buildInfoRow('이번 달 사용', '$contractsUsed / $contractsLimit개'),
+          const SizedBox(height: 12),
+          _buildInfoRow('남은 무료', isPremium ? '무제한' : '$remaining개'),
+          const SizedBox(height: 12),
+          _buildInfoRow('보유 포인트', '$points P'),
+          const SizedBox(height: 20),
+          const Divider(height: 1, thickness: 1),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              const Text(
+                '출석 체크',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+              ),
+              const Spacer(),
+              ElevatedButton(
+                onPressed: (_checkingIn || !canCheckIn || _loadingStats) ? null : _handleCheckIn,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: canCheckIn ? primaryColor : Colors.grey.shade300,
+                  foregroundColor: canCheckIn ? Colors.white : Colors.grey.shade600,
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  elevation: 0,
+                ),
+                child: _checkingIn
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    : Text(
+                        canCheckIn ? '출석 체크' : '완료',
+                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                      ),
+              ),
+            ],
+          ),
+          if (!canCheckIn)
+            Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: Text(
+                '오늘은 이미 출석했습니다 ✅',
+                style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+              ),
+            ),
+          if (canCheckIn)
+            Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: Text(
+                '매일 출석하면 1포인트를 받을 수 있어요!',
+                style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(String label, String value) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: TextStyle(fontSize: 14, color: Colors.grey.shade700),
+        ),
+        Text(
+          value,
+          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Color(0xFF111827)),
         ),
       ],
     );

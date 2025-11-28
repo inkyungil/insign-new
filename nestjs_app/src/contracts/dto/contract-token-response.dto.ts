@@ -22,6 +22,11 @@ export class ContractTokenResponseDto {
   signatureImage!: string | null;
   signatureSource!: string | null;
   status!: string;
+  blockchainHash!: string | null;
+  blockchainTxHash!: string | null;
+  blockchainTimestamp!: Date | null;
+  blockchainNetwork!: string | null;
+  pdfHash!: string | null;
 
   static fromEntity(entity: Contract): ContractTokenResponseDto {
     const dto = new ContractTokenResponseDto();
@@ -48,6 +53,11 @@ export class ContractTokenResponseDto {
     dto.signatureImage = entity.signatureImage;
     dto.signatureSource = entity.signatureSource;
     dto.status = entity.status;
+    dto.blockchainHash = entity.blockchainHash;
+    dto.blockchainTxHash = entity.blockchainTxHash;
+    dto.blockchainTimestamp = entity.blockchainTimestamp;
+    dto.blockchainNetwork = entity.blockchainNetwork;
+    dto.pdfHash = entity.pdfHash;
     return dto;
   }
 }

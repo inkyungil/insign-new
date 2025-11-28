@@ -95,21 +95,37 @@ class _TemplatesScreenState extends State<TemplatesScreen> {
   Widget build(BuildContext context) {
     final slivers = <Widget>[
       SliverPadding(
-        padding: const EdgeInsets.fromLTRB(20, 36, 20, 12),
+        padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
         sliver: SliverToBoxAdapter(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: Row(
             children: [
               const Text(
-                '템플릿 라이브러리',
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+                '템플릿',
+                style: TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF111827),
+                ),
               ),
-              const SizedBox(height: 8),
-              Text(
-                _subtitleText(),
-                style: const TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
+              const Spacer(),
+              IconButton(
+                onPressed: () => context.push('/inbox'),
+                icon: const Icon(Icons.notifications_outlined),
+                style: IconButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: primaryColor,
+                ),
               ),
             ],
+          ),
+        ),
+      ),
+      SliverPadding(
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+        sliver: SliverToBoxAdapter(
+          child: Text(
+            _subtitleText(),
+            style: const TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
           ),
         ),
       ),

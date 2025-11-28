@@ -10,13 +10,19 @@ import { ContractMailLog } from "./contract-mail-log.entity";
 import { CreateContractDto } from "./dto/create-contract.dto";
 import { MailService } from "../mail/mail.service";
 import { ConfigService } from "@nestjs/config";
-import { randomBytes } from "crypto";
+import { createHash, randomBytes, randomUUID } from "crypto";
 import { VerifyPerformerDto } from "./dto/verify-performer.dto";
 import { CompleteSignatureDto } from "./dto/complete-signature.dto";
 import { basename, join } from "path";
 import { promises as fs } from "fs";
 import { Template } from "../templates/template.entity";
 import { EncryptionService } from "../common/encryption.service";
+import { PushNotificationsService } from "../push-tokens/push-notifications.service";
+import { ContractBlockchainService } from "../blockchain/contract-blockchain.service";
+import { ContractPdfService } from "./contract-pdf.service";
+import { VerifyPdfDto } from "./dto/verify-pdf.dto";
+import { InboxService } from "../inbox/inbox.service";
+import { UsersService } from "../users/users.service";
 
 @Injectable()
 export class ContractsService {
@@ -30,12 +36,36 @@ export class ContractsService {
     private readonly mailService: MailService,
     private readonly configService: ConfigService,
     private readonly encryptionService: EncryptionService,
+    private readonly pushNotificationsService: PushNotificationsService,
+    private readonly contractBlockchainService: ContractBlockchainService,
+    private readonly contractPdfService: ContractPdfService,
+    private readonly inboxService: InboxService,
+    private readonly usersService: UsersService,
   ) {}
 
   async createContract(
     dto: CreateContractDto,
     createdByUserId?: number | null,
   ) {
+    // 계약서 작성 제한 체크 (로그인한 사용자만)
+    if (createdByUserId) {
+      const canCreate = await this.usersService.canCreateContract(
+        createdByUserId,
+      );
+
+      if (!canCreate.canCreate) {
+        throw new BadRequestException(
+          canCreate.reason || "계약서 작성 제한을 초과했습니다.",
+        );
+      }
+
+      // 포인트 사용 여부 판단
+      const usePoints = canCreate.contractsUsed >= canCreate.contractsLimit;
+
+      // 실제 작성 전에 카운트 증가 (나중에 실패해도 롤백하지 않음)
+      await this.usersService.incrementContractUsage(createdByUserId, usePoints);
+    }
+
     const templateId = await this.resolveTemplateId(dto.templateId ?? null);
 
     // 민감한 필드 암호화
@@ -107,17 +137,18 @@ export class ContractsService {
 
     // 복호화 후 enrichTemplateMetadata를 호출하여 templateFormSchema 추가
     const decrypted = this.decryptContractFields(savedContract);
+    const metadataBeforeEnrichment = decrypted.metadata;
     const enrichedContract = await this.enrichTemplateMetadata(decrypted);
 
     // metadata가 변경되었으면 다시 암호화하여 저장
-    if (enrichedContract.metadata !== decrypted.metadata) {
-      const toSave = { ...enrichedContract };
-      toSave.metadata = this.encryptionService.encryptJSON(
-        enrichedContract.metadata,
-      );
-      const saved = await this.contractsRepository.save(toSave);
-      // 저장 후 다시 복호화하여 반환
-      return this.decryptContractFields(saved);
+    if (enrichedContract.metadata !== metadataBeforeEnrichment) {
+      const encryptedMetadata = enrichedContract.metadata
+        ? this.encryptionService.encryptJSON(enrichedContract.metadata)
+        : null;
+
+      await this.contractsRepository.update(enrichedContract.id, {
+        metadata: encryptedMetadata,
+      });
     }
 
     return enrichedContract;
@@ -231,6 +262,48 @@ export class ContractsService {
     return this.enrichTemplateMetadata(decrypted);
   }
 
+  async verifyUploadedPdf(
+    contractId: number,
+    userId: number | null,
+    dto: VerifyPdfDto,
+  ) {
+    const contract = await this.findOneById(contractId, userId);
+
+    const encoded = dto.fileBase64?.trim();
+    if (!encoded) {
+      throw new BadRequestException(
+        "검증할 PDF 데이터를 첨부해 주세요.",
+      );
+    }
+
+    const pdfBuffer = this.decodePdfPayload(encoded);
+    const computedHash = createHash("sha256").update(pdfBuffer).digest("hex");
+    const storedHash = await this.ensurePdfHash(contract);
+
+    if (!storedHash) {
+      throw new BadRequestException(
+        "저장된 계약서 파일이 없어 검증할 수 없습니다.",
+      );
+    }
+
+    const matchesStoredPdf = computedHash === storedHash;
+    const matchesBlockchain = contract.blockchainHash
+      ? computedHash === contract.blockchainHash
+      : matchesStoredPdf;
+
+    return {
+      success: true,
+      matchesBlockchain,
+      matchesStoredPdf,
+      computedHash,
+      blockchainHash: contract.blockchainHash,
+      pdfHash: storedHash,
+      blockchainTxHash: contract.blockchainTxHash,
+      blockchainNetwork: contract.blockchainNetwork,
+      blockchainTimestamp: contract.blockchainTimestamp,
+    };
+  }
+
   async completeSignature(signatureToken: string, dto: CompleteSignatureDto) {
     const contract = await this.fetchContractBySignatureToken(signatureToken);
 
@@ -270,7 +343,89 @@ export class ContractsService {
 
     const saved = await this.contractsRepository.save(contract);
     const decrypted = this.decryptContractFields(saved);
-    return this.enrichTemplateMetadata(decrypted);
+    const contractForPdf = await this.enrichTemplateMetadata(decrypted);
+
+    // 서명 완료 알림 전송 (갑/작성자에게)
+    if (saved.createdByUserId) {
+      try {
+        const notificationTitle = '계약서 서명 완료';
+        const notificationBody = `${contractForPdf.performerName || '수행자'}님이 "${contractForPdf.name}" 계약서에 서명했습니다.`;
+
+        // 1. Inbox에 메시지 저장
+        await this.inboxService.createForUser(saved.createdByUserId, {
+          kind: 'alert',
+          title: notificationTitle,
+          body: notificationBody,
+          tags: ['push/admin/contract', 'signature_completed'],
+          metadata: {
+            contractId: saved.id,
+            contractName: contractForPdf.name,
+            type: 'contract_completed',
+          },
+        });
+
+        // 2. Push 알림 전송
+        await this.pushNotificationsService.sendContractCompletedNotification({
+          userId: saved.createdByUserId,
+          title: notificationTitle,
+          body: notificationBody,
+          contractId: saved.id,
+          contractName: contractForPdf.name,
+        });
+      } catch (error) {
+        // 알림 실패는 무시 (계약서 저장은 성공)
+        console.error('알림 전송 실패:', error);
+      }
+    }
+
+    try {
+      console.log('📄 PDF 파일 생성 중...');
+      const pdfBuffer = await this.contractPdfService.generate(contractForPdf);
+
+      await this.removePdfFile(saved.pdfFilePath);
+      const storedPdfPath = await this.savePdfFile(saved.id, pdfBuffer);
+      saved.pdfFilePath = storedPdfPath;
+
+      const storedBuffer = await this.loadPdfFromStorage(storedPdfPath);
+      const bufferForHash = storedBuffer ?? pdfBuffer;
+
+      const pdfHash = this.contractBlockchainService.generatePdfHash(bufferForHash);
+      saved.pdfHash = pdfHash;
+      console.log(`🔐 PDF 해시 생성 완료: ${pdfHash}`);
+
+      if (this.contractBlockchainService.isEnabled()) {
+        const blockchainResult = await this.contractBlockchainService.registerContractToBlockchain(
+          contractForPdf,
+          pdfHash,
+        );
+
+        if (blockchainResult.success) {
+          saved.blockchainHash = pdfHash;
+          saved.blockchainTxHash = blockchainResult.txHash ?? null;
+          saved.blockchainTimestamp = new Date();
+          saved.blockchainNetwork = blockchainResult.network ?? 'kaia-testnet';
+
+          console.log(`✅ 블록체인 등록 완료 - 계약서 ID: ${saved.id}, TX: ${saved.blockchainTxHash}`);
+          console.log(`🔐 문서 해시: ${pdfHash}`);
+
+          // 블록체인에 등록되었으므로 PDF 파일 삭제 (스토리지 절약)
+          await this.removePdfFile(saved.pdfFilePath);
+          saved.pdfFilePath = null;
+          console.log('🗑️  PDF 파일 삭제 완료 - 블록체인 해시로 검증 가능');
+        } else {
+          console.error('⚠️ 블록체인 등록 실패:', blockchainResult.error);
+          console.log('💾 PDF 파일은 저장되었으며, 파일 해시로 검증 가능');
+        }
+      } else {
+        console.log('ℹ️ 블록체인 기능이 비활성화되어 있습니다.');
+      }
+
+      await this.contractsRepository.save(saved);
+    } catch (error) {
+      console.error('⚠️ 계약서 PDF 해시 생성/블록체인 등록 중 오류:', error);
+    }
+
+    return contractForPdf;
   }
 
   async resendSignatureRequest(contractId: number, userId: number | null) {
@@ -392,16 +547,20 @@ export class ContractsService {
       performerEmailPlain,
     );
 
+    // 갑(의뢰인) 이름 복호화
+    const clientNamePlain = this.safeDecrypt(updatedContract.clientName);
+
     try {
       await this.mailService.sendContractSignatureMail({
         to: performerEmailPlain,
         contractName: updatedContract.name,
         link,
+        senderName: clientNamePlain ?? undefined,
       });
 
       await this.mailLogRepository.save(
         this.mailLogRepository.create({
-          contract: updatedContract,
+          contractId: updatedContract.id,
           recipientEmail: encryptedRecipientEmail,
           mailType: "signature-request",
           status: "success",
@@ -411,7 +570,7 @@ export class ContractsService {
     } catch (error) {
       await this.mailLogRepository.save(
         this.mailLogRepository.create({
-          contract: updatedContract,
+          contractId: updatedContract.id,
           recipientEmail: encryptedRecipientEmail,
           mailType: "signature-request",
           status: "failed",
@@ -539,6 +698,78 @@ export class ContractsService {
     }
   }
 
+  private resolvePdfAbsolutePath(pdfFilePath: string) {
+    const filename = basename(pdfFilePath);
+    const absoluteDir = join(process.cwd(), 'public', 'contracts');
+    return join(absoluteDir, filename);
+  }
+
+  private async loadPdfFromStorage(
+    pdfFilePath: string | null,
+  ): Promise<Buffer | null> {
+    if (!pdfFilePath) {
+      return null;
+    }
+    try {
+      const absolutePath = this.resolvePdfAbsolutePath(pdfFilePath);
+      return await fs.readFile(absolutePath);
+    } catch (error) {
+      const err = error as NodeJS.ErrnoException;
+      if (err?.code !== 'ENOENT') {
+        console.warn(
+          `Failed to read stored PDF file (${pdfFilePath}): ${err?.message}`,
+        );
+      }
+      return null;
+    }
+  }
+
+  private async removePdfFile(currentPath: string | null) {
+    if (!currentPath) {
+      return;
+    }
+    try {
+      const absolutePath = this.resolvePdfAbsolutePath(currentPath);
+      await fs.unlink(absolutePath);
+    } catch (error) {
+      const err = error as NodeJS.ErrnoException;
+      if (err?.code !== 'ENOENT') {
+        console.warn(
+          `Failed to remove stored PDF file (${currentPath}): ${err?.message}`,
+        );
+      }
+    }
+  }
+
+  private async savePdfFile(contractId: number, pdfBuffer: Buffer): Promise<string> {
+    const absoluteDir = join(process.cwd(), 'public', 'contracts');
+    await fs.mkdir(absoluteDir, { recursive: true });
+
+    const filename = `contract-${contractId}-${Date.now()}-${randomUUID()}.pdf`;
+    const filePath = join(absoluteDir, filename);
+    await fs.writeFile(filePath, pdfBuffer);
+
+    return `/static/contracts/${filename}`;
+  }
+
+  async getStoredPdfBuffer(contract: Contract): Promise<Buffer | null> {
+    return this.loadPdfFromStorage(contract.pdfFilePath);
+  }
+
+  private async ensurePdfHash(contract: Contract): Promise<string | null> {
+    if (contract.pdfHash) {
+      return contract.pdfHash;
+    }
+    const stored = await this.loadPdfFromStorage(contract.pdfFilePath);
+    if (!stored) {
+      return null;
+    }
+    const computed = createHash('sha256').update(stored).digest('hex');
+    await this.contractsRepository.update(contract.id, { pdfHash: computed });
+    contract.pdfHash = computed;
+    return computed;
+  }
+
   /**
    * 계약의 암호화된 필드를 복호화합니다.
    * @param contract 복호화할 계약
@@ -549,11 +780,13 @@ export class ContractsService {
       return contract;
     }
 
+    const decrypted = { ...contract } as Contract;
+
     // clientContact 복호화
-    if (contract.clientContact) {
+    if (decrypted.clientContact) {
       try {
-        contract.clientContact = this.encryptionService.decrypt(
-          contract.clientContact,
+        decrypted.clientContact = this.encryptionService.decrypt(
+          decrypted.clientContact,
         );
       } catch {
         // 복호화 실패 시 원본 유지 (마이그레이션 중 평문 데이터 대응)
@@ -561,10 +794,10 @@ export class ContractsService {
     }
 
     // clientEmail 복호화
-    if (contract.clientEmail) {
+    if (decrypted.clientEmail) {
       try {
-        contract.clientEmail = this.encryptionService.decrypt(
-          contract.clientEmail,
+        decrypted.clientEmail = this.encryptionService.decrypt(
+          decrypted.clientEmail,
         );
       } catch {
         // 복호화 실패 시 원본 유지
@@ -572,10 +805,10 @@ export class ContractsService {
     }
 
     // clientName 복호화
-    if (contract.clientName) {
+    if (decrypted.clientName) {
       try {
-        contract.clientName = this.encryptionService.decrypt(
-          contract.clientName,
+        decrypted.clientName = this.encryptionService.decrypt(
+          decrypted.clientName,
         );
       } catch {
         // 복호화 실패 시 원본 유지
@@ -583,10 +816,10 @@ export class ContractsService {
     }
 
     // performerEmail 복호화
-    if (contract.performerEmail) {
+    if (decrypted.performerEmail) {
       try {
-        contract.performerEmail = this.encryptionService.decrypt(
-          contract.performerEmail,
+        decrypted.performerEmail = this.encryptionService.decrypt(
+          decrypted.performerEmail,
         );
       } catch {
         // 복호화 실패 시 원본 유지
@@ -594,10 +827,10 @@ export class ContractsService {
     }
 
     // performerName 복호화
-    if (contract.performerName) {
+    if (decrypted.performerName) {
       try {
-        contract.performerName = this.encryptionService.decrypt(
-          contract.performerName,
+        decrypted.performerName = this.encryptionService.decrypt(
+          decrypted.performerName,
         );
       } catch {
         // 복호화 실패 시 원본 유지
@@ -605,10 +838,10 @@ export class ContractsService {
     }
 
     // performerContact 복호화
-    if (contract.performerContact) {
+    if (decrypted.performerContact) {
       try {
-        contract.performerContact = this.encryptionService.decrypt(
-          contract.performerContact,
+        decrypted.performerContact = this.encryptionService.decrypt(
+          decrypted.performerContact,
         );
       } catch {
         // 복호화 실패 시 원본 유지
@@ -616,12 +849,12 @@ export class ContractsService {
     }
 
     // metadata 복호화
-    if (contract.metadata) {
+    if (decrypted.metadata) {
       try {
         // metadata가 문자열이면 암호화된 것으로 간주
-        if (typeof contract.metadata === "string") {
-          contract.metadata = this.encryptionService.decryptJSON(
-            contract.metadata,
+        if (typeof decrypted.metadata === "string") {
+          decrypted.metadata = this.encryptionService.decryptJSON(
+            decrypted.metadata,
           );
         }
       } catch {
@@ -629,7 +862,7 @@ export class ContractsService {
       }
     }
 
-    return contract;
+    return decrypted;
   }
 
   private async fetchContractBySignatureToken(
@@ -739,5 +972,20 @@ export class ContractsService {
 
     contract.metadata = nextMetadata;
     return contract;
+  }
+
+  private decodePdfPayload(encoded: string): Buffer {
+    const trimmed = encoded.trim();
+    const base64 = trimmed.includes(",")
+      ? trimmed.substring(trimmed.lastIndexOf(",") + 1)
+      : trimmed;
+
+    try {
+      return Buffer.from(base64, "base64");
+    } catch {
+      throw new BadRequestException(
+        "유효한 PDF 파일을 업로드해 주세요.",
+      );
+    }
   }
 }

@@ -173,7 +173,12 @@ async function encryptAllPersonalData() {
                 stats.metadata.encrypted++;
                 console.log(`  ✅ metadata 암호화 완료 (크기: ${metaStr.length} → ${String(encryptedMeta).length} bytes)`);
               } catch {
-                console.log(`  ⚠️  JSON 파싱 실패, 건너뜀`);
+                console.log(`  ⚠️  JSON 파싱 실패, 빈 metadata로 초기화 후 암호화합니다.`);
+                const encryptedMeta = encryptionService.encryptJSON({});
+                contract.metadata = encryptedMeta as unknown as Contract["metadata"];
+                needsUpdate = true;
+                stats.metadata.encrypted++;
+                console.log('  ✅ 빈 metadata로 대체하여 암호화 완료');
               }
             } else if (metaStr.match(/^[0-9a-f]+:[0-9a-f]+:[0-9a-f]+/i)) {
               stats.metadata.alreadyEncrypted++;

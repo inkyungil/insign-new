@@ -1,4 +1,4 @@
-import { Controller, Get, Param } from "@nestjs/common";
+import { Controller, Get, Param, ParseIntPipe } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 import { PoliciesService } from "./policies.service";
 import { Policy } from "./policy.entity";
@@ -20,7 +20,7 @@ export class PoliciesController {
   }
 
   @Get(":id")
-  async findOne(@Param("id") id: string): Promise<Policy | null> {
-    return this.policiesService.findOne(+id);
+  async findOne(@Param("id", ParseIntPipe) id: number): Promise<Policy | null> {
+    return this.policiesService.findOne(id);
   }
 }

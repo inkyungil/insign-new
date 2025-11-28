@@ -10,6 +10,8 @@ import 'package:go_router/go_router.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:insign/core/constants.dart';
 import 'package:insign/data/services/google_auth_service.dart';
+import 'package:insign/data/services/session_service.dart';
+import 'package:insign/data/services/terms_agreement_service.dart';
 import 'package:insign/features/auth/cubit/auth_cubit.dart';
 import 'package:insign/features/auth/widgets/google_web_button.dart';
 
@@ -65,6 +67,62 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
+  void _showEmailVerificationDialog(BuildContext context, String email) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('이메일 인증 필요'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('이메일 인증이 완료되지 않았습니다.'),
+            const SizedBox(height: 12),
+            Text(
+              '가입 시 $email로 인증 메일이 발송되었습니다.',
+              style: const TextStyle(fontSize: 14),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              '메일함을 확인하거나, 인증 메일을 다시 받으시려면 아래 버튼을 눌러주세요.',
+              style: TextStyle(fontSize: 14),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('확인'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await _resendVerificationEmail(email);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF4F46E5),
+            ),
+            child: const Text(
+              '인증 메일 재발송',
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _resendVerificationEmail(String email) async {
+    try {
+      final message = await context.read<AuthCubit>().resendVerificationEmail(email);
+      if (!mounted) return;
+      _showToast(message);
+    } catch (error) {
+      final message = error.toString().replaceFirst('Exception: ', '');
+      _showToast(message.isEmpty ? '재발송에 실패했습니다.' : message, isError: true);
+    }
+  }
+
   Future<void> _onGoogleAccountChanged(
       GoogleSignInAccount? account) async {
     if (!kIsWeb || account == null) {
@@ -81,23 +139,58 @@ class _LoginScreenState extends State<LoginScreen> {
       _isGoogleLoading = true;
     });
 
-    final success =
-        await context.read<AuthCubit>().loginWithGoogle(account: account);
+    try {
+      // Google 로그인 시도
+      final success =
+          await context.read<AuthCubit>().loginWithGoogle(account: account);
 
-    if (!mounted) {
-      return;
-    }
+      if (!mounted) {
+        return;
+      }
 
-    setState(() {
-      _isGoogleLoading = false;
-    });
+      setState(() {
+        _isGoogleLoading = false;
+      });
 
-    if (success) {
-      final user = context.read<AuthCubit>().state.user;
+      if (!success) {
+        _showToast('Google 로그인에 실패했습니다.', isError: true);
+        await GoogleAuthService.signOut();
+        return;
+      }
+
+      final authState = context.read<AuthCubit>().state;
+      final user = authState.user;
+
+      // 서버에서 약관 동의가 필요하다고 표시한 경우
+      final needsTermsAgreement = user?.agreedToTerms != true ||
+                                  user?.agreedToPrivacy != true ||
+                                  user?.agreedToSensitive != true;
+
+      if (needsTermsAgreement && user?.email != null) {
+        // 약관 동의 필요 - 약관 동의 화면으로 이동
+        if (!mounted) return;
+
+        // 현재 임시 토큰을 가져와서 전달
+        final tempToken = await SessionService.getAccessToken();
+
+        context.go('/auth/terms-agreement', extra: {
+          'nextRoute': '/home',
+          'userEmail': user!.email,
+          'tempToken': tempToken,
+        });
+        return;
+      }
+
+      // 약관 동의 완료 - 홈으로 이동
       final nickname = user?.displayName ?? user?.email ?? '사용자';
       _showToast('$nickname님, 반갑습니다!');
       context.go('/home');
-    } else {
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isGoogleLoading = false;
+        });
+      }
       _showToast('Google 로그인에 실패했습니다.', isError: true);
       await GoogleAuthService.signOut();
     }
@@ -133,7 +226,14 @@ class _LoginScreenState extends State<LoginScreen> {
       context.go('/home');
     } catch (error) {
       final message = error.toString().replaceFirst('Exception: ', '');
-      _showToast(message.isEmpty ? '로그인에 실패했습니다.' : message, isError: true);
+
+      // 이메일 미인증 에러 체크
+      if (message.contains('이메일 인증이 필요합니다') || message.contains('이메일 인증')) {
+        if (!mounted) return;
+        _showEmailVerificationDialog(context, email);
+      } else {
+        _showToast(message.isEmpty ? '로그인에 실패했습니다.' : message, isError: true);
+      }
     } finally {
       if (mounted) {
         setState(() {
@@ -152,22 +252,57 @@ class _LoginScreenState extends State<LoginScreen> {
       _isGoogleLoading = true;
     });
 
-    final success = await context.read<AuthCubit>().loginWithGoogle();
+    try {
+      // Google 로그인 시도
+      final success = await context.read<AuthCubit>().loginWithGoogle();
 
-    if (!mounted) {
-      return;
-    }
+      if (!mounted) {
+        return;
+      }
 
-    setState(() {
-      _isGoogleLoading = false;
-    });
+      setState(() {
+        _isGoogleLoading = false;
+      });
 
-    if (success) {
-      final user = context.read<AuthCubit>().state.user;
+      if (!success) {
+        _showToast('Google 로그인에 실패했습니다.', isError: true);
+        return;
+      }
+
+      final authState = context.read<AuthCubit>().state;
+      final user = authState.user;
+
+      // 서버에서 약관 동의가 필요하다고 표시한 경우
+      // (백엔드 응답을 직접 확인할 수 없으므로, user 정보로 판단)
+      final needsTermsAgreement = user?.agreedToTerms != true ||
+                                  user?.agreedToPrivacy != true ||
+                                  user?.agreedToSensitive != true;
+
+      if (needsTermsAgreement && user?.email != null) {
+        // 약관 동의 필요 - 약관 동의 화면으로 이동
+        if (!mounted) return;
+
+        // 현재 임시 토큰을 가져와서 전달
+        final tempToken = await SessionService.getAccessToken();
+
+        context.go('/auth/terms-agreement', extra: {
+          'nextRoute': '/home',
+          'userEmail': user!.email,
+          'tempToken': tempToken,
+        });
+        return;
+      }
+
+      // 약관 동의 완료 - 홈으로 이동
       final nickname = user?.displayName ?? user?.email ?? '사용자';
       _showToast('$nickname님, 반갑습니다!');
       context.go('/home');
-    } else {
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isGoogleLoading = false;
+        });
+      }
       _showToast('Google 로그인에 실패했습니다.', isError: true);
     }
   }
@@ -352,7 +487,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   Center(
                     child: TextButton(
                       onPressed: () {
-                        context.go('/auth/register');
+                        context.go('/auth/terms-agreement');
                       },
                       style: TextButton.styleFrom(
                         padding: EdgeInsets.zero,

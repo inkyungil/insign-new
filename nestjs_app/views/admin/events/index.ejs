@@ -1,0 +1,175 @@
+<% const activePage = 'events'; %>
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>이벤트 관리</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.15.4/css/all.min.css" crossorigin="anonymous" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/overlayscrollbars@1.13.1/css/OverlayScrollbars.min.css" crossorigin="anonymous" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/css/adminlte.min.css" crossorigin="anonymous" />
+  </head>
+  <body class="hold-transition sidebar-mini">
+    <div class="wrapper">
+      <aside class="main-sidebar sidebar-dark-primary elevation-4">
+        <a href="/adm/dashboard" class="brand-link">
+          <span class="brand-text font-weight-light">인싸인 Admin</span>
+        </a>
+        <div class="sidebar">
+          <div class="user-panel mt-3 pb-3 mb-3 d-flex">
+            <div class="image">
+              <i class="fas fa-user-shield fa-2x text-white-50"></i>
+            </div>
+            <div class="info">
+              <a href="/adm/dashboard" class="d-block"><%= admin?.username ?? '관리자' %></a>
+            </div>
+          </div>
+          <nav class="mt-2">
+            <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu">
+              <li class="nav-item">
+                <a href="/adm/dashboard" class="nav-link">
+                  <i class="nav-icon fas fa-tachometer-alt"></i>
+                  <p>대시보드</p>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a href="/adm/users" class="nav-link">
+                  <i class="nav-icon fas fa-user-friends"></i>
+                  <p>가입자 관리</p>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a href="/adm/contracts" class="nav-link">
+                  <i class="nav-icon fas fa-file-signature"></i>
+                  <p>계약 관리</p>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a href="/adm/templates" class="nav-link">
+                  <i class="nav-icon fas fa-file-alt"></i>
+                  <p>템플릿 관리</p>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a href="/adm/events" class="nav-link active">
+                  <i class="nav-icon fas fa-calendar-alt"></i>
+                  <p>이벤트 관리</p>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a href="/adm/policies" class="nav-link">
+                  <i class="nav-icon fas fa-shield-alt"></i>
+                  <p>약관/정책 관리</p>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a href="/adm/inbox" class="nav-link">
+                  <i class="nav-icon fas fa-envelope"></i>
+                  <p>메시지함</p>
+                </a>
+              </li>
+            </ul>
+          </nav>
+        </div>
+      </aside>
+
+      <div class="content-wrapper">
+        <section class="content-header">
+          <div class="container-fluid">
+            <div class="row mb-2">
+              <div class="col-sm-6">
+                <h1>이벤트 관리</h1>
+              </div>
+              <div class="col-sm-6">
+                <ol class="breadcrumb float-sm-right">
+                  <li class="breadcrumb-item"><a href="/adm/dashboard">Home</a></li>
+                  <li class="breadcrumb-item active">이벤트</li>
+                </ol>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="content">
+          <div class="container-fluid">
+            <% if (typeof message !== 'undefined' && message) { %>
+              <div class="alert alert-success alert-dismissible">
+                <button type="button" class="close" data-dismiss="alert">&times;</button>
+                <%= message %>
+              </div>
+            <% } %>
+
+            <div class="card">
+              <div class="card-header">
+                <h3 class="card-title">이벤트 목록</h3>
+                <div class="card-tools">
+                  <a href="/adm/events/new" class="btn btn-sm btn-primary">
+                    <i class="fas fa-plus"></i> 새 이벤트
+                  </a>
+                </div>
+              </div>
+              <div class="card-body p-0">
+                <table class="table table-striped">
+                  <thead>
+                    <tr>
+                      <th style="width: 50px">ID</th>
+                      <th>제목</th>
+                      <th style="width: 120px">시작일</th>
+                      <th style="width: 120px">종료일</th>
+                      <th style="width: 80px">상태</th>
+                      <th style="width: 150px">작업</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <% if (events.length === 0) { %>
+                      <tr>
+                        <td colspan="6" class="text-center text-muted">등록된 이벤트가 없습니다.</td>
+                      </tr>
+                    <% } else { %>
+                      <% events.forEach(function(event) { %>
+                        <tr>
+                          <td><%= event.id %></td>
+                          <td><%= event.title %></td>
+                          <td><%= event.startDate ? new Date(event.startDate).toLocaleDateString('ko-KR') : '-' %></td>
+                          <td><%= event.endDate ? new Date(event.endDate).toLocaleDateString('ko-KR') : '-' %></td>
+                          <td>
+                            <% if (event.isActive) { %>
+                              <span class="badge badge-success">활성</span>
+                            <% } else { %>
+                              <span class="badge badge-secondary">비활성</span>
+                            <% } %>
+                          </td>
+                          <td>
+                            <a href="/adm/events/<%= event.id %>/edit" class="btn btn-sm btn-info">
+                              <i class="fas fa-edit"></i> 수정
+                            </a>
+                            <form action="/adm/events/<%= event.id %>/delete" method="POST" style="display:inline;" onsubmit="return confirm('정말 삭제하시겠습니까?');">
+                              <button type="submit" class="btn btn-sm btn-danger">
+                                <i class="fas fa-trash"></i> 삭제
+                              </button>
+                            </form>
+                          </td>
+                        </tr>
+                      <% }); %>
+                    <% } %>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <footer class="main-footer">
+        <div class="float-right d-none d-sm-block">
+          <b>Version</b> 1.0.0
+        </div>
+        <strong>Copyright &copy; 2024 인싸인.</strong> All rights reserved.
+      </footer>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.1/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/js/adminlte.min.js"></script>
+  </body>
+</html>

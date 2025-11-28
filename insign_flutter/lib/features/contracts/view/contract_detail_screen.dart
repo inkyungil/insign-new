@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -8,12 +9,15 @@ import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart
 import 'package:intl/intl.dart';
 import 'package:printing/printing.dart';
 import 'package:universal_html/html.dart' as html;
+import 'package:universal_io/io.dart' as io;
+import 'package:url_launcher/url_launcher.dart';
 import 'package:insign/core/config/api_config.dart';
 import 'package:insign/core/constants.dart';
 import 'package:insign/data/contract_repository.dart';
 import 'package:insign/data/services/session_service.dart';
 import 'package:insign/data/template_repository.dart';
 import 'package:insign/features/contracts/utils/html_layout_utils.dart';
+import 'package:insign/models/blockchain_verification_result.dart';
 import 'package:insign/models/contract.dart';
 import 'package:insign/models/template_form.dart';
 
@@ -47,7 +51,10 @@ class _ContractDetailScreenState extends State<ContractDetailScreen> {
   bool _refreshing = false;
   bool _resending = false;
   bool _exportingPdf = false;
+  bool _verifyingPdf = false;
   String? _errorMessage;
+  BlockchainVerificationResult? _verificationResult;
+  String? _verificationError;
 
   @override
   void initState() {
@@ -114,15 +121,17 @@ class _ContractDetailScreenState extends State<ContractDetailScreen> {
             contract.signatureImage,
       );
 
-      final employerSignedAt = _metadataString(metadata, 'authorSignatureDate') ??
-          _metadataString(metadata, 'employerSignDate') ??
-          _metadataString(metadata, 'clientSignDate') ??
-          _metadataString(metadata, 'clientSignedAt');
+      final employerSignedAt =
+          _metadataString(metadata, 'authorSignatureDate') ??
+              _metadataString(metadata, 'employerSignDate') ??
+              _metadataString(metadata, 'clientSignDate') ??
+              _metadataString(metadata, 'clientSignedAt');
 
-      final performerSignedAt = _metadataString(metadata, 'employeeSignatureDate') ??
-          _metadataString(metadata, 'performerSignDate') ??
-          _metadataString(metadata, 'performerSignedAt') ??
-          _formatDateTime(contract.signatureCompletedAt);
+      final performerSignedAt =
+          _metadataString(metadata, 'employeeSignatureDate') ??
+              _metadataString(metadata, 'performerSignDate') ??
+              _metadataString(metadata, 'performerSignedAt') ??
+              _formatDateTime(contract.signatureCompletedAt);
       final authorBytes = _decodeSignatureBytes(authorUrl);
 
       if (!mounted) return;
@@ -136,6 +145,9 @@ class _ContractDetailScreenState extends State<ContractDetailScreen> {
         _clientSignatureUrl = performerUrl;
         _clientSignedAt = employerSignedAt;
         _performerSignedAt = performerSignedAt;
+        _verificationResult = null;
+        _verificationError = null;
+        _verifyingPdf = false;
       });
     } catch (error) {
       if (!mounted) return;
@@ -211,6 +223,7 @@ class _ContractDetailScreenState extends State<ContractDetailScreen> {
 
     return result;
   }
+
   String? _metadataString(Map<String, dynamic>? metadata, String key) {
     if (metadata == null) return null;
     final value = metadata[key];
@@ -264,22 +277,40 @@ class _ContractDetailScreenState extends State<ContractDetailScreen> {
         '</div>';
   }
 
-
-
-
   Map<String, dynamic>? get _metadata => _contract?.metadata;
 
   bool get _isDeclined =>
-      _contract?.status == 'signature_declined' || (_contract?.signatureDeclinedAt?.isNotEmpty ?? false);
+      _contract?.status == 'signature_declined' ||
+      (_contract?.signatureDeclinedAt?.isNotEmpty ?? false);
   bool get _isCompleted =>
-      _contract?.status == 'signature_completed' || (_contract?.signatureCompletedAt?.isNotEmpty ?? false);
+      _contract?.status == 'signature_completed' ||
+      (_contract?.signatureCompletedAt?.isNotEmpty ?? false);
   bool get _isExpired {
     final end = _contract?.endDate;
     if (end == null) return false;
     return end.isBefore(DateTime.now());
   }
 
-  bool get _disableResend => _resending || _isDeclined || _isCompleted || _isExpired;
+  bool get _disableResend =>
+      _resending || _isDeclined || _isCompleted || _isExpired;
+
+  bool _hasBlockchainInfo(Contract contract) {
+    return contract.blockchainHash?.isNotEmpty ?? false;
+  }
+
+  String? _getBlockchainExplorerUrl(String network, String? txHash) {
+    if (txHash == null || txHash.trim().isEmpty) return null;
+
+    // Kaia 블록체인 익스플로러
+    if (network.contains('testnet') || network.contains('kairos')) {
+      return 'https://kairos.kaiascan.io/tx/$txHash';
+    } else if (network.contains('mainnet') || network.contains('kaia')) {
+      return 'https://kaiascan.io/tx/$txHash';
+    }
+
+    // 기본값: testnet
+    return 'https://kairos.kaiascan.io/tx/$txHash';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -291,7 +322,8 @@ class _ContractDetailScreenState extends State<ContractDetailScreen> {
 
   Widget _buildBody() {
     if (_loading && !_refreshing) {
-      return const Center(child: CircularProgressIndicator(color: primaryColor));
+      return const Center(
+          child: CircularProgressIndicator(color: primaryColor));
     }
 
     if (_errorMessage != null) {
@@ -319,6 +351,12 @@ class _ContractDetailScreenState extends State<ContractDetailScreen> {
             _buildStatusTimeline(contract),
             const SizedBox(height: 20),
             _buildPartiesCard(contract),
+            const SizedBox(height: 20),
+            _buildOverviewCard(contract),
+            if (_hasBlockchainInfo(contract)) ...[
+              const SizedBox(height: 20),
+              _buildBlockchainCard(contract),
+            ],
             if (_authorSignatureBytes != null) ...[
               const SizedBox(height: 20),
             ],
@@ -344,7 +382,8 @@ class _ContractDetailScreenState extends State<ContractDetailScreen> {
             Text(
               message,
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 15, color: Color(0xFF991B1B), height: 1.5),
+              style: const TextStyle(
+                  fontSize: 15, color: Color(0xFF991B1B), height: 1.5),
             ),
             const SizedBox(height: 16),
             ElevatedButton.icon(
@@ -406,7 +445,8 @@ class _ContractDetailScreenState extends State<ContractDetailScreen> {
               borderRadius: BorderRadius.circular(24),
             ),
             alignment: Alignment.center,
-            child: const Icon(Icons.description_outlined, color: Colors.white, size: 32),
+            child: const Icon(Icons.description_outlined,
+                color: Colors.white, size: 32),
           ),
           const SizedBox(height: 16),
           Text(
@@ -437,7 +477,8 @@ class _ContractDetailScreenState extends State<ContractDetailScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: const [
-                  Icon(Icons.warning_amber_rounded, size: 16, color: Color(0xFFF97316)),
+                  Icon(Icons.warning_amber_rounded,
+                      size: 16, color: Color(0xFFF97316)),
                   SizedBox(width: 6),
                   Text(
                     '계약 기간이 만료되었습니다.',
@@ -481,13 +522,15 @@ class _ContractDetailScreenState extends State<ContractDetailScreen> {
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(vertical: 16),
               minimumSize: const Size.fromHeight(52),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(18)),
             ),
             child: _resending
                 ? const SizedBox(
                     width: 20,
                     height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: Colors.white),
                   )
                 : const Text(
                     '서명 요청 재전송',
@@ -498,7 +541,8 @@ class _ContractDetailScreenState extends State<ContractDetailScreen> {
           Text(
             '서명 요청은 수행자 이메일 $performerEmail 로 발송됩니다.',
             textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 12, color: Color(0xFF64748B), height: 1.5),
+            style: const TextStyle(
+                fontSize: 12, color: Color(0xFF64748B), height: 1.5),
           ),
           if (disableReason != null) ...[
             const SizedBox(height: 8),
@@ -510,12 +554,14 @@ class _ContractDetailScreenState extends State<ContractDetailScreen> {
           ],
           const SizedBox(height: 16),
           OutlinedButton.icon(
-            onPressed: shareUrl == null ? null : () => _handleCopyLink(shareUrl),
+            onPressed:
+                shareUrl == null ? null : () => _handleCopyLink(shareUrl),
             style: OutlinedButton.styleFrom(
               foregroundColor: primaryColor,
               padding: const EdgeInsets.symmetric(vertical: 16),
               minimumSize: const Size.fromHeight(52),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(18)),
             ),
             icon: const Icon(Icons.link, size: 18),
             label: const Text(
@@ -530,13 +576,15 @@ class _ContractDetailScreenState extends State<ContractDetailScreen> {
               foregroundColor: primaryColor,
               padding: const EdgeInsets.symmetric(vertical: 16),
               minimumSize: const Size.fromHeight(52),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(18)),
             ),
             icon: _exportingPdf
                 ? const SizedBox(
                     height: 18,
                     width: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: primaryColor),
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: primaryColor),
                   )
                 : const Icon(Icons.picture_as_pdf, size: 18),
             label: Text(
@@ -559,7 +607,10 @@ class _ContractDetailScreenState extends State<ContractDetailScreen> {
         children: [
           const Text(
             '계약 진행 상태',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+            style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF111827)),
           ),
           const SizedBox(height: 16),
           Column(
@@ -587,7 +638,10 @@ class _ContractDetailScreenState extends State<ContractDetailScreen> {
         children: [
           const Text(
             '계약 당사자',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+            style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF111827)),
           ),
           const SizedBox(height: 16),
           _PartyInfoCard(
@@ -610,7 +664,9 @@ class _ContractDetailScreenState extends State<ContractDetailScreen> {
 
   Widget _buildOverviewCard(Contract contract) {
     final period = _formatPeriod(contract.startDate, contract.endDate);
-    final amount = contract.amount?.isNotEmpty == true ? _formatCurrency(contract.amount!) : '-';
+    final amount = contract.amount?.isNotEmpty == true
+        ? _formatCurrency(contract.amount!)
+        : '-';
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: _cardDecoration(),
@@ -619,7 +675,10 @@ class _ContractDetailScreenState extends State<ContractDetailScreen> {
         children: [
           const Text(
             '주요 정보',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+            style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF111827)),
           ),
           const SizedBox(height: 12),
           _InfoRow(label: '계약 기간', value: period ?? '-'),
@@ -628,11 +687,229 @@ class _ContractDetailScreenState extends State<ContractDetailScreen> {
           _InfoRow(label: '작성일', value: _formatDateTime(contract.createdAt)),
           _InfoRow(label: '최근 수정', value: _formatDateTime(contract.updatedAt)),
           if (contract.signatureSentAt != null)
-            _InfoRow(label: '서명 요청 일시', value: _formatDateTime(contract.signatureSentAt)),
+            _InfoRow(
+                label: '서명 요청 일시',
+                value: _formatDateTime(contract.signatureSentAt)),
           if (contract.signatureCompletedAt != null)
-            _InfoRow(label: '서명 완료 일시', value: _formatDateTime(contract.signatureCompletedAt)),
+            _InfoRow(
+                label: '서명 완료 일시',
+                value: _formatDateTime(contract.signatureCompletedAt)),
           if (_isDeclined && contract.signatureDeclinedAt != null)
-            _InfoRow(label: '서명 거절 일시', value: _formatDateTime(contract.signatureDeclinedAt)),
+            _InfoRow(
+                label: '서명 거절 일시',
+                value: _formatDateTime(contract.signatureDeclinedAt)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBlockchainCard(Contract contract) {
+    final timestamp = _formatDateTime(contract.blockchainTimestamp);
+    final network = contract.blockchainNetwork ?? 'kaia-testnet';
+    final txHash = contract.blockchainTxHash;
+    final explorerUrl = _getBlockchainExplorerUrl(network, txHash);
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: _cardDecoration(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: const [
+              Icon(Icons.shield_outlined, color: primaryColor, size: 22),
+              SizedBox(width: 8),
+              Text(
+                '블록체인 인증 정보',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF111827),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _InfoRow(label: '네트워크', value: network),
+          _InfoRow(label: '등록 일시', value: timestamp ?? '-'),
+          _buildHashDisplay('트랜잭션 해시', txHash, explorerUrl: explorerUrl),
+          _buildHashDisplay('문서 해시', contract.blockchainHash),
+          const SizedBox(height: 16),
+          const Divider(height: 1, thickness: 1, color: Color(0xFFE2E8F0)),
+          const SizedBox(height: 16),
+          const Text(
+            '위변조 검사',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF111827),
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            '서명 완료 시 다운로드받은 PDF 문서를 업로드하면 블록체인에 기록된 해시값과 즉시 비교합니다.',
+            style: TextStyle(fontSize: 13, color: Color(0xFF475467), height: 1.4),
+          ),
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            onPressed: _verifyingPdf ? null : _handleVerifyPdf,
+            style: OutlinedButton.styleFrom(
+              foregroundColor: primaryColor,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              minimumSize: const Size.fromHeight(48),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
+            icon: _verifyingPdf
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: primaryColor,
+                    ),
+                  )
+                : const Icon(Icons.search, size: 18),
+            label: Text(
+              _verifyingPdf ? '검증 중...' : 'PDF 업로드하여 위변조 검사',
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          if (_verificationError != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              _verificationError!,
+              style: const TextStyle(
+                fontSize: 12,
+                color: Color(0xFFDC2626),
+              ),
+            ),
+          ],
+          if (_verificationResult != null)
+            _buildVerificationResultCard(_verificationResult!),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVerificationResultCard(
+      BlockchainVerificationResult result) {
+    final matchesStored = result.matchesStoredPdf ?? false;
+    final matchesBlockchain = result.matchesBlockchain ?? matchesStored;
+    final bool isValid = matchesStored;
+    final bool blockchainWarning = matchesStored && !matchesBlockchain;
+
+    final Color baseColor = isValid
+        ? const Color(0xFF16A34A)
+        : const Color(0xFFDC2626);
+    final icon = isValid ? Icons.verified_outlined : Icons.warning_amber_rounded;
+    final title = isValid
+        ? (blockchainWarning
+            ? '저장된 해시는 일치하지만 블록체인 값은 다릅니다.'
+            : '원본과 일치합니다.')
+        : '경고: 해시가 일치하지 않습니다.';
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(top: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: baseColor.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: baseColor.withOpacity(0.4)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: baseColor, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: baseColor,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _buildHashDisplay(
+            '업로드한 PDF 해시',
+            result.computedHash,
+            labelColor: const Color(0xFF52525B),
+            valueColor: const Color(0xFF111827),
+          ),
+          if (result.blockchainHash?.isNotEmpty ?? false)
+            _buildHashDisplay(
+              '문서 해시',
+              result.blockchainHash,
+              labelColor: const Color(0xFF52525B),
+              valueColor: const Color(0xFF111827),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHashDisplay(
+    String label,
+    String? value, {
+    Color? labelColor,
+    Color? valueColor,
+    String? explorerUrl,
+  }) {
+    final hasValue = value?.trim().isNotEmpty ?? false;
+    final display = hasValue ? value!.trim() : '-';
+    final hasExplorerUrl = explorerUrl?.trim().isNotEmpty ?? false;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 110,
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: labelColor ?? const Color(0xFF6B7280),
+              ),
+            ),
+          ),
+          Expanded(
+            child: SelectableText(
+              display,
+              style: TextStyle(
+                fontSize: 13.5,
+                height: 1.4,
+                color: valueColor ?? const Color(0xFF111827),
+              ),
+            ),
+          ),
+          if (hasValue)
+            IconButton(
+              tooltip: '값 복사',
+              splashRadius: 18,
+              icon: const Icon(Icons.copy, size: 18, color: Color(0xFF94A3B8)),
+              onPressed: () => _copyToClipboard(
+                display,
+                message: '$label 값을 복사했습니다.',
+              ),
+            ),
+          if (hasExplorerUrl)
+            IconButton(
+              tooltip: '블록체인 익스플로러에서 보기',
+              splashRadius: 18,
+              icon: const Icon(Icons.open_in_new, size: 18, color: primaryColor),
+              onPressed: () => _openExplorerUrl(explorerUrl!),
+            ),
         ],
       ),
     );
@@ -654,7 +931,10 @@ class _ContractDetailScreenState extends State<ContractDetailScreen> {
           children: [
             const Text(
               '계약서 미리보기',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+              style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF111827)),
             ),
             const SizedBox(height: 12),
             Container(
@@ -668,7 +948,8 @@ class _ContractDetailScreenState extends State<ContractDetailScreen> {
               child: HtmlWidget(
                 html,
                 renderMode: RenderMode.column,
-                textStyle: const TextStyle(fontSize: 14, height: 1.6, color: Color(0xFF1F2937)),
+                textStyle: const TextStyle(
+                    fontSize: 14, height: 1.6, color: Color(0xFF1F2937)),
                 customStylesBuilder: _htmlStylesBuilder,
               ),
             ),
@@ -677,8 +958,6 @@ class _ContractDetailScreenState extends State<ContractDetailScreen> {
       ),
     ];
   }
-
-
 
   String? _signatureShareUrl(Contract contract) {
     final token = contract.signatureToken;
@@ -699,7 +978,8 @@ class _ContractDetailScreenState extends State<ContractDetailScreen> {
 
     try {
       final token = await SessionService.getAccessToken();
-      await _contractRepository.resendSignatureRequest(id: contract.id, token: token);
+      await _contractRepository.resendSignatureRequest(
+          id: contract.id, token: token);
       await _loadContract(isRefresh: true);
       if (!mounted) return;
       final targetEmail = (contract.performerEmail?.trim().isNotEmpty ?? false)
@@ -726,19 +1006,47 @@ class _ContractDetailScreenState extends State<ContractDetailScreen> {
     }
   }
 
-  Future<void> _handleCopyLink(String url) async {
-    await Clipboard.setData(ClipboardData(text: url));
+  Future<void> _copyToClipboard(String value, {String message = '클립보드에 복사했습니다.'}) async {
+    await Clipboard.setData(ClipboardData(text: value));
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('서명 링크를 복사했습니다.'), duration: Duration(seconds: 2)),
+      SnackBar(content: Text(message), duration: const Duration(seconds: 2)),
     );
+  }
+
+  Future<void> _handleCopyLink(String url) async {
+    await _copyToClipboard(url, message: '서명 링크를 복사했습니다.');
+  }
+
+  Future<void> _openExplorerUrl(String url) async {
+    final uri = Uri.parse(url);
+
+    if (kIsWeb) {
+      // 웹: 새 탭에서 열기
+      html.window.open(url, '_blank');
+    } else {
+      // 모바일: 외부 브라우저에서 열기
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('블록체인 익스플로러를 열 수 없습니다.'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _handleDownloadPdf() async {
     final contract = _contract;
     if (contract == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('계약 정보를 불러오지 못했습니다.'), duration: Duration(seconds: 2)),
+        const SnackBar(
+            content: Text('계약 정보를 불러오지 못했습니다.'),
+            duration: Duration(seconds: 2)),
       );
       return;
     }
@@ -756,7 +1064,8 @@ class _ContractDetailScreenState extends State<ContractDetailScreen> {
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('계약서를 PDF로 저장했습니다.'), duration: Duration(seconds: 2)),
+        const SnackBar(
+            content: Text('계약서를 PDF로 저장했습니다.'), duration: Duration(seconds: 2)),
       );
     } catch (error) {
       if (!mounted) return;
@@ -771,6 +1080,95 @@ class _ContractDetailScreenState extends State<ContractDetailScreen> {
         setState(() => _exportingPdf = false);
       }
     }
+  }
+
+  Future<void> _handleVerifyPdf() async {
+    final contract = _contract;
+    if (contract == null) return;
+
+    final bytes = await _pickPdfBytes();
+    if (bytes == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('검사할 PDF 파일을 선택해 주세요.'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _verifyingPdf = true;
+      _verificationError = null;
+    });
+
+    try {
+      final token = await SessionService.getAccessToken();
+      final result = await _contractRepository.verifyContractPdf(
+        id: contract.id,
+        fileBytes: bytes,
+        token: token,
+      );
+
+      if (!mounted) return;
+      setState(() {
+        _verificationResult = result;
+        _verificationError = null;
+      });
+
+      final matchesStored = result.matchesStoredPdf ?? false;
+      final matchesChain = result.matchesBlockchain ?? matchesStored;
+      late final String message;
+      if (matchesStored && matchesChain) {
+        message = '업로드한 PDF가 블록체인 해시와 일치합니다.';
+      } else if (matchesStored && !matchesChain) {
+        message = 'PDF는 저장된 해시와 일치하지만 블록체인 값은 다릅니다.';
+      } else {
+        message = '경고: 업로드한 PDF가 저장된 해시와 다릅니다.';
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message), duration: const Duration(seconds: 3)),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      final message = error.toString().replaceFirst('Exception: ', '');
+      setState(() {
+        _verificationError =
+            message.isEmpty ? '위변조 검사를 완료하지 못했습니다.' : message;
+        _verificationResult = null;
+      });
+    } finally {
+      if (mounted) {
+        setState(() => _verifyingPdf = false);
+      }
+    }
+  }
+
+  Future<Uint8List?> _pickPdfBytes() async {
+    final selection = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: const ['pdf'],
+      withData: true,
+    );
+
+    if (selection == null || selection.files.isEmpty) {
+      return null;
+    }
+
+    final file = selection.files.single;
+    if (file.bytes != null) {
+      return file.bytes;
+    }
+
+    final path = file.path;
+    if (path != null && path.isNotEmpty) {
+      final io.File ioFile = io.File(path);
+      return ioFile.readAsBytes();
+    }
+
+    return null;
   }
 
   Future<void> _savePdfToDevice(Uint8List bytes, String filename) async {
@@ -837,7 +1235,8 @@ class _ContractDetailScreenState extends State<ContractDetailScreen> {
     assign('createdAt', _formatDateTime(contract.createdAt));
     assign('updatedAt', _formatDateTime(contract.updatedAt));
     assign('signatureSentAt', _formatDateTime(contract.signatureSentAt));
-    assign('signatureCompletedAt', _formatDateTime(contract.signatureCompletedAt));
+    assign(
+        'signatureCompletedAt', _formatDateTime(contract.signatureCompletedAt));
 
     final clientSignedAt = _formatDateTime(_clientSignedAt);
     if (clientSignedAt.isNotEmpty && clientSignedAt != '-') {
@@ -847,7 +1246,8 @@ class _ContractDetailScreenState extends State<ContractDetailScreen> {
       assign('employerSignDate', clientSignedAt);
     }
 
-    final performerSignedAt = _performerSignedAt ?? _formatDateTime(contract.signatureCompletedAt);
+    final performerSignedAt =
+        _performerSignedAt ?? _formatDateTime(contract.signatureCompletedAt);
     if (performerSignedAt.isNotEmpty && performerSignedAt != '-') {
       assign('employeeSignatureDate', performerSignedAt);
       assign('employeeSignDate', performerSignedAt);
@@ -898,12 +1298,17 @@ class _ContractDetailScreenState extends State<ContractDetailScreen> {
     return normalizeContractHtmlLayout(cleaned);
   }
 
-  Map<String, String>? _htmlStylesBuilder(dynamic element) => buildContractHtmlStyles(element);
+  Map<String, String>? _htmlStylesBuilder(dynamic element) =>
+      buildContractHtmlStyles(element);
 
   List<_StatusStep> _statusSteps(Contract contract) {
     return [
       _StatusStep('기안 완료', contract.createdAt != null),
-      _StatusStep('서명 대기', contract.status == 'active' || contract.signatureSentAt != null || _isDeclined),
+      _StatusStep(
+          '서명 대기',
+          contract.status == 'active' ||
+              contract.signatureSentAt != null ||
+              _isDeclined),
       _StatusStep('서명 완료', _isCompleted),
     ];
   }
@@ -964,7 +1369,10 @@ class _ContractDetailScreenState extends State<ContractDetailScreen> {
       return value.map(_normalizeValue).where((v) => v.isNotEmpty).join(', ');
     }
     if (value is Map) {
-      return value.values.map(_normalizeValue).where((v) => v.isNotEmpty).join(', ');
+      return value.values
+          .map(_normalizeValue)
+          .where((v) => v.isNotEmpty)
+          .join(', ');
     }
     return value.toString();
   }
@@ -977,10 +1385,26 @@ class _ContractDetailScreenState extends State<ContractDetailScreen> {
     return '${value.substring(0, 6)}-${value.substring(7, 8)}******';
   }
 
-  String _formatTemplateFieldValue(TemplateFieldDefinition field, dynamic value) {
+  String _formatTemplateFieldValue(
+      TemplateFieldDefinition field, dynamic value) {
     if (value == null) return '-';
-    if (field.type == 'checkbox' && value is List) {
-      return value.map((item) => _mapOptionLabel(field, item.toString())).join(', ');
+    if (field.type == 'checkbox') {
+      if (field.options.isEmpty) {
+        final boolValue = value is bool
+            ? value
+            : value is String
+                ? (value.toLowerCase() == 'true' || value == '1')
+                : value == 1;
+        return boolValue ? '예' : '아니오';
+      }
+      if (value is List) {
+        return value
+            .map((item) => _mapOptionLabel(field, item.toString()))
+            .join(', ');
+      }
+      if (value is String && value.isNotEmpty) {
+        return _mapOptionLabel(field, value);
+      }
     }
     if ((field.type == 'select' || field.type == 'radio') && value is String) {
       return _mapOptionLabel(field, value);
@@ -1047,7 +1471,8 @@ class _ContractDetailScreenState extends State<ContractDetailScreen> {
       color: Colors.white,
       borderRadius: BorderRadius.circular(28),
       boxShadow: const [
-        BoxShadow(color: Color(0x14111827), blurRadius: 18, offset: Offset(0, 8)),
+        BoxShadow(
+            color: Color(0x14111827), blurRadius: 18, offset: Offset(0, 8)),
       ],
     );
   }
@@ -1057,7 +1482,8 @@ class _ContractDetailScreenState extends State<ContractDetailScreen> {
       color: Colors.white,
       borderRadius: BorderRadius.circular(24),
       boxShadow: const [
-        BoxShadow(color: Color(0x14111827), blurRadius: 14, offset: Offset(0, 6)),
+        BoxShadow(
+            color: Color(0x14111827), blurRadius: 14, offset: Offset(0, 6)),
       ],
     );
   }
@@ -1145,7 +1571,9 @@ class _TimelineTile extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: completed ? const Color(0xFF111827) : const Color(0xFF94A3B8),
+                    color: completed
+                        ? const Color(0xFF111827)
+                        : const Color(0xFF94A3B8),
                   ),
                 ),
                 if (timestamp != null && timestamp!.isNotEmpty)
@@ -1153,7 +1581,8 @@ class _TimelineTile extends StatelessWidget {
                     padding: const EdgeInsets.only(top: 4),
                     child: Text(
                       timestamp!,
-                      style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
+                      style: const TextStyle(
+                          fontSize: 12, color: Color(0xFF94A3B8)),
                     ),
                   ),
               ],
@@ -1232,7 +1661,8 @@ class _InfoRow extends StatelessWidget {
           Expanded(
             child: Text(
               value.isEmpty ? '-' : value,
-              style: const TextStyle(fontSize: 14, color: Color(0xFF111827), height: 1.4),
+              style: const TextStyle(
+                  fontSize: 14, color: Color(0xFF111827), height: 1.4),
             ),
           ),
         ],
@@ -1311,7 +1741,8 @@ class _TemplateFieldRow extends StatelessWidget {
           Expanded(
             child: Text(
               value.isEmpty ? '-' : value,
-              style: const TextStyle(fontSize: 13, color: Color(0xFF111827), height: 1.4),
+              style: const TextStyle(
+                  fontSize: 13, color: Color(0xFF111827), height: 1.4),
             ),
           ),
         ],

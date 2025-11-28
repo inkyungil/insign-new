@@ -5,22 +5,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:go_router/go_router.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:insign/core/router/app_router.dart';
 import 'package:insign/core/theme/app_theme.dart';
-import 'package:insign/data/podcast_repository.dart';
 import 'package:insign/data/services/kakao_auth_service.dart';
-import 'package:insign/data/stock_repository.dart';
 import 'package:insign/features/auth/cubit/auth_cubit.dart';
-import 'package:insign/features/invest/cubit/stock_cubit.dart';
-import 'package:insign/features/podcast/cubit/podcast_player_cubit.dart';
-import 'package:insign/features/podcast/cubit/podcast_prefs_cubit.dart';
 import 'package:insign/features/onboarding/cubit/onboarding_cubit.dart';
 import 'package:insign/services/back_button_service.dart';
 import 'package:insign/services/push_notification_service.dart';
-import 'package:insign/utils/key_hash_converter.dart';
-import 'package:just_audio/just_audio.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
 import 'firebase_options.dart';
 
@@ -73,30 +65,12 @@ class InsignApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MultiRepositoryProvider(
+    return MultiBlocProvider(
       providers: [
-        RepositoryProvider(create: (context) => PodcastRepository()),
-        RepositoryProvider(create: (context) => StockRepository()),
-        RepositoryProvider(create: (context) => AudioPlayer()),
+        BlocProvider(create: (context) => OnboardingCubit()..checkStatus()),
+        BlocProvider(create: (context) => AuthCubit()..checkSession()),
       ],
-      child: MultiBlocProvider(
-        providers: [
-          BlocProvider(create: (context) => OnboardingCubit()..checkStatus()),
-          BlocProvider(create: (context) => AuthCubit()..checkSession()),
-          BlocProvider(create: (context) => PodcastPrefsCubit()),
-          BlocProvider(
-            create: (context) => StockCubit(
-              context.read<StockRepository>(),
-              context.read<AuthCubit>(),
-            ),
-          ),
-          BlocProvider(
-            create: (context) => PodcastPlayerCubit(
-              context.read<AudioPlayer>(),
-            ),
-          ),
-        ],
-        child: MaterialApp.router(
+      child: MaterialApp.router(
           title: '인싸인',
           theme: AppTheme.lightTheme,
           routerConfig: appRouter,
@@ -111,7 +85,6 @@ class InsignApp extends StatelessWidget {
             GlobalCupertinoLocalizations.delegate,
           ],
         ),
-      ),
     );
   }
 }

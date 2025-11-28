@@ -2,6 +2,7 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
 } from "typeorm";
@@ -15,7 +16,11 @@ export class ContractMailLog {
   @ManyToOne(() => Contract, (contract) => contract.mailLogs, {
     onDelete: "CASCADE",
   })
+  @JoinColumn({ name: "contract_id" })
   contract!: Contract;
+
+  @Column({ name: "contract_id", type: "int" })
+  contractId!: number;
 
   @Column({ name: "recipient_email", type: "varchar", length: 255 })
   recipientEmail!: string;

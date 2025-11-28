@@ -56,6 +56,7 @@ npm install
 
 # Development
 npm run start:dev            # Hot reload on :8083
+npm run start:debug          # Debug mode with --watch
 
 # Production
 npm run build
@@ -71,11 +72,23 @@ npm run test:e2e
 npm run lint
 npm run format
 
-# Custom scripts
-npm run migrate:templates           # Migrate contract templates
-npm run migrate:encrypt-contracts   # Encrypt personal data
-npm run check:encryption           # Verify encryption status
-npm run list:users                 # List all users
+# Database migration & encryption scripts
+npm run migrate:templates                    # Migrate contract templates
+npm run migrate:alter-schema                 # Alter schema for encryption
+npm run migrate:alter-schema-all             # Alter schema for all contacts
+npm run migrate:alter-users-email            # Alter users email encryption
+npm run migrate:alter-contract-mail-logs     # Alter contract mail logs
+npm run migrate:encrypt-contracts            # Encrypt existing contracts
+npm run migrate:encrypt-all-personal-data    # Encrypt all personal data
+npm run migrate:encrypt-user-emails          # Encrypt user emails
+npm run migrate:encrypt-contract-mail-logs   # Encrypt contract mail logs
+
+# Utility scripts
+npm run check:encryption     # Verify encryption status
+npm run check:user           # Check specific user
+npm run list:users           # List all users
+npm run verify:password      # Verify user password
+npm run reset:password       # Reset user password
 ```
 
 ## Architecture
@@ -200,16 +213,40 @@ src/
 
 **Environment** (`.env`):
 ```env
+# Server
+PORT=8083
+
+# Database (MySQL with TypeORM)
 DB_HOST=localhost
 DB_PORT=3306
+DB_USERNAME=root
+DB_PASSWORD=<password>
 DB_NAME=insign
-PORT=8083
+
+# Security
 SESSION_SECRET=<secret>
 JWT_SECRET=<secret>
+
+# OAuth
 GOOGLE_WEB_CLIENT_ID=<client-id>
 GOOGLE_ANDROID_CLIENT_ID=<client-id>
+
+# Email (Nodemailer)
 SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=<email>
+SMTP_PASS=<password>
+
+# Firebase Admin SDK
+FIREBASE_PROJECT_ID=insign-69997
+FIREBASE_CLIENT_EMAIL=<service-account-email>
+FIREBASE_PRIVATE_KEY=<private-key>
 ```
+
+**Admin Portal**:
+- Default admin account: `admin / admin1234` (auto-created on first run)
+- Access at `https://in-sign.shop/adm/dashboard`
+- EJS templates in `nestjs_app/views/`
 
 ## Key Workflows
 
@@ -240,11 +277,41 @@ SMTP_HOST=smtp.gmail.com
 
 ### Deployment Workflow
 
-1. **Flutter**: `cd insign_flutter && flutter build web`
-2. **Copy build**: `cp -r build/web/* /home/insign/web/`
-3. **NestJS**: `cd nestjs_app && npm run build` (if API changed)
-4. **Restart backend**: PM2 or systemd restart
-5. **Nginx**: Auto-serves updated static files (no restart needed)
+1. **Flutter Web Build**:
+   ```bash
+   cd insign_flutter
+   flutter build web
+   cp -r build/web/* /home/insign/web/
+   ```
+
+2. **NestJS Backend** (if API changed):
+   ```bash
+   cd nestjs_app
+   npm run build
+   npm run start:prod
+   # Or restart with PM2/systemd
+   ```
+
+3. **Nginx**: Auto-serves updated static files from `/home/insign/web/` (no restart needed)
+
+### Running Database Scripts
+
+NestJS scripts require database connection. Two methods:
+
+**Method 1: Using npm scripts** (reads from `.env`):
+```bash
+cd nestjs_app
+npm run list:users
+npm run check:encryption
+npm run verify:password
+```
+
+**Method 2: Direct ts-node** (with inline env vars):
+```bash
+DB_HOST=localhost DB_PORT=3306 DB_USERNAME=insign \
+DB_PASSWORD='H./Bv!jPsH*z-[Jo' DB_NAME=insign \
+npx ts-node -r tsconfig-paths/register src/scripts/list-users.ts
+```
 
 ## Platform Configuration
 
@@ -322,16 +389,87 @@ npm run test:e2e          # E2E tests
 - `SessionService` persists to SharedPreferences
 - `ApiClient` auto-injects Bearer token into all authenticated requests
 
-### Push Notifications
-- FCM token registered with backend on app start
-- Background handler must be top-level function with `@pragma('vm:entry-point')`
-- Inbox module in NestJS manages notification storage
+### Data Encryption & Privacy
+- **Personal data encryption**: Contract personal info (names, emails, phone numbers) encrypted at rest
+- **Encryption scripts**: Available in `nestjs_app/src/scripts/` for migrating existing data
+- **Migration flow**:
+  1. Run schema alteration script (e.g., `npm run migrate:alter-schema`)
+  2. Run encryption script (e.g., `npm run migrate:encrypt-contracts`)
+  3. Verify with `npm run check:encryption`
+- **CRITICAL**: Never modify encrypted columns directly - always use migration scripts
+- Encrypted fields: User emails, contract participant info, mail logs
+
+### Push Notifications (Firebase Cloud Messaging)
+- `PushNotificationService.initialize()` called in `main.dart` after Firebase init
+- FCM token automatically registered with backend on app start
+- Background handler (`firebaseMessagingBackgroundHandler`) must be:
+  - Top-level function (not inside a class)
+  - Decorated with `@pragma('vm:entry-point')` for tree-shaking
+  - Defined before `main()` function
+- Foreground notifications handled by `PushNotificationService`
+- Inbox module in NestJS manages notification storage and push-tokens registration
+- Flutter local notifications used for displaying notifications
 
 ### WSL2 Development
 - Working directory: `/home/insign` (not `/mnt/c/android_prj/`)
 - Flutter commands: Run from `insign_flutter/`
 - NestJS commands: Run from `nestjs_app/`
 - Some commands may have `bash\r` errors - use Linux subsystem directly
+
+## Troubleshooting
+
+### Flutter Common Issues
+
+**Hot reload not working**:
+```bash
+flutter clean
+flutter pub get
+flutter run
+```
+
+**Kakao/Google OAuth issues**:
+- Verify SHA-1 key hash matches in Firebase/Kakao console
+- Check client IDs in `api_config.dart` match OAuth console
+- For Kakao: Ensure minSdkVersion is 21+, multiDex enabled
+
+**Web build errors**:
+- Clear `build/` directory: `flutter clean`
+- Check `web/index.html` has correct Google client ID meta tag
+
+### NestJS Common Issues
+
+**Database connection errors**:
+- Verify `.env` credentials match MySQL instance
+- Check MySQL is running: `sudo mysql -u root -p`
+- Test connection: `npm run list:users`
+
+**TypeORM sync issues**:
+- TypeORM auto-sync is disabled in production
+- Use migration scripts for schema changes
+- Never delete/modify encrypted columns without migration
+
+**Port 8083 already in use**:
+```bash
+lsof -i :8083
+kill <pid>
+# Or use different port in .env
+```
+
+### Nginx Issues
+
+**Static files not updating**:
+```bash
+# Verify files copied correctly
+ls -la /home/insign/web/
+# Check nginx config
+sudo nginx -t
+# Reload if needed (usually not required)
+sudo systemctl reload nginx
+```
+
+**API requests failing**:
+- Check backend is running: `curl http://localhost:8083/api/health`
+- Verify nginx proxy: Check `/api/*` routes in `in-sign.conf`
 
 ## Additional Documentation
 
@@ -340,11 +478,13 @@ npm run test:e2e          # E2E tests
 - `GOOGLE_OAUTH_SETUP.md` - Google OAuth configuration
 - `ANDROID_KEYSTORE_SETUP.md` - Keystore management
 - `PLAY_STORE_DEPLOYMENT.md` - Play Store deployment
+- `CLAUDE.md` - Flutter-specific guidance (separate from this root CLAUDE.md)
 
 **Backend** (`nestjs_app/`):
 - Swagger docs at `http://localhost:8083/docs` (dev mode)
+- `README.md` - Quick start guide
 
 **Root**:
-- `AGENTS.md` - Coding standards
-- `in-sign.conf` - Nginx configuration
-- `작업내역_*.md` - Work history logs
+- `AGENTS.md` - Coding standards and guidelines
+- `in-sign.conf` - Nginx reverse proxy configuration
+- `작업내역_*.md` - Work history logs (Korean)

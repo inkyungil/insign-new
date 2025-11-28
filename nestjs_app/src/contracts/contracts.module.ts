@@ -11,6 +11,10 @@ import { MailModule } from "../mail/mail.module";
 import { TemplatesModule } from "../templates/templates.module";
 import { Template } from "../templates/template.entity";
 import { EncryptionService } from "../common/encryption.service";
+import { PushTokensModule } from "../push-tokens/push-tokens.module";
+import { BlockchainModule } from "../blockchain/blockchain.module";
+import { InboxModule } from "../inbox/inbox.module";
+import { UsersModule } from "../users/users.module";
 
 @Module({
   imports: [
@@ -18,6 +22,10 @@ import { EncryptionService } from "../common/encryption.service";
     ConfigModule,
     MailModule,
     TemplatesModule,
+    PushTokensModule,
+    BlockchainModule,
+    InboxModule,
+    UsersModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],

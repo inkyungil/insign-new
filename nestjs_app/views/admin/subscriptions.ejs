@@ -1,0 +1,452 @@
+<% const activePage = 'subscriptions'; %>
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>구독 관리</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.15.4/css/all.min.css" crossorigin="anonymous" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/overlayscrollbars@1.13.1/css/OverlayScrollbars.min.css" crossorigin="anonymous" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/css/adminlte.min.css" crossorigin="anonymous" />
+  </head>
+  <body class="hold-transition sidebar-mini">
+    <div class="wrapper">
+
+
+      <aside class="main-sidebar sidebar-dark-primary elevation-4">
+        <a href="/adm/dashboard" class="brand-link">
+          <span class="brand-text font-weight-light">인싸인 Admin</span>
+        </a>
+        <div class="sidebar">
+          <div class="user-panel mt-3 pb-3 mb-3 d-flex">
+            <div class="image">
+              <i class="fas fa-user-shield fa-2x text-white-50"></i>
+            </div>
+            <div class="info">
+              <a href="/adm/dashboard" class="d-block"><%= user?.username ?? '관리자' %></a>
+            </div>
+          </div>
+          <nav class="mt-2">
+            <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu">
+              <li class="nav-item">
+                <a href="/adm/dashboard" class="nav-link <%= activePage === 'dashboard' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-tachometer-alt"></i>
+                  <p>대시보드</p>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a href="/adm/list" class="nav-link <%= activePage === 'admins' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-users-cog"></i>
+                  <p>관리자 계정</p>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a href="/adm/users" class="nav-link <%= activePage === 'users' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-user-friends"></i>
+                  <p>가입자 관리</p>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a href="/adm/contracts" class="nav-link <%= activePage === 'contracts' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-file-signature"></i>
+                  <p>계약 관리</p>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a href="/adm/templates" class="nav-link <%= activePage === 'templates' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-file-alt"></i>
+                  <p>템플릿 관리</p>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a href="/adm/subscriptions" class="nav-link <%= activePage === 'subscriptions' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-sync-alt"></i>
+                  <p>구독 관리</p>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a href="/adm/plans" class="nav-link <%= activePage === 'plans' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-layer-group"></i>
+                  <p>요금제 관리</p>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a href="/adm/policies" class="nav-link <%= activePage === 'policies' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-shield-alt"></i>
+                  <p>약관/정책 관리</p>
+                </a>
+              </li>
+              <li class="nav-item">
+              <li class="nav-item">
+                <a href="/adm/events" class="nav-link <%= activePage === 'events' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-calendar-alt"></i>
+                  <p>이벤트 관리</p>
+                </a>
+              </li>
+                <a href="/adm/inbox" class="nav-link <%= activePage === 'inbox' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-envelope"></i>
+                  <p>메시지함</p>
+                </a>
+              </li>
+            </ul>
+          </nav>
+        </div>
+      </aside>
+
+      <div class="content-wrapper">
+        <section class="content-header">
+          <div class="container-fluid">
+            <div class="row mb-2">
+              <div class="col-sm-6">
+                <h1>구독 관리</h1>
+              </div>
+              <div class="col-sm-6">
+                <ol class="breadcrumb float-sm-right">
+                  <li class="breadcrumb-item"><a href="/adm/dashboard">Home</a></li>
+                  <li class="breadcrumb-item active">구독 관리</li>
+                </ol>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="content">
+          <div class="container-fluid">
+            <% if (successMessage) { %>
+            <div class="alert alert-success"><i class="fas fa-check mr-2"></i><%= successMessage %></div>
+            <% } %>
+            <% if (errorMessage) { %>
+            <div class="alert alert-danger"><i class="fas fa-exclamation-circle mr-2"></i><%= errorMessage %></div>
+            <% } %>
+            <% if (filters && filters.notice) { %>
+            <div class="alert alert-info"><i class="fas fa-info-circle mr-2"></i><%= filters.notice %></div>
+            <% } %>
+
+            <div class="row">
+              <div class="col-lg-8">
+                <div class="row">
+                  <div class="col-sm-3 col-6">
+                    <div class="small-box bg-primary">
+                      <div class="inner">
+                        <h3><%= summary?.total ?? 0 %></h3>
+                        <p>전체 구독</p>
+                      </div>
+                      <div class="icon"><i class="fas fa-layer-group"></i></div>
+                    </div>
+                  </div>
+                  <div class="col-sm-3 col-6">
+                    <div class="small-box bg-success">
+                      <div class="inner">
+                        <h3><%= summary?.active ?? 0 %></h3>
+                        <p>활성</p>
+                      </div>
+                      <div class="icon"><i class="fas fa-play-circle"></i></div>
+                    </div>
+                  </div>
+                  <div class="col-sm-3 col-6">
+                    <div class="small-box bg-warning">
+                      <div class="inner">
+                        <h3><%= summary?.pending ?? 0 %></h3>
+                        <p>대기</p>
+                      </div>
+                      <div class="icon"><i class="fas fa-hourglass-half"></i></div>
+                    </div>
+                  </div>
+                  <div class="col-sm-3 col-6">
+                    <div class="small-box bg-secondary">
+                      <div class="inner">
+                        <h3><%= (summary?.cancelled ?? 0) + (summary?.expired ?? 0) %></h3>
+                        <p>취소/만료</p>
+                      </div>
+                      <div class="icon"><i class="fas fa-ban"></i></div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="card">
+                  <div class="card-header border-0">
+                    <div class="d-flex justify-content-between align-items-center">
+                      <h3 class="card-title mb-0">구독 목록</h3>
+                      <form class="form-inline" method="get" action="/adm/subscriptions">
+                        <select class="form-control form-control-sm mr-2" name="status">
+                          <option value="">상태 전체</option>
+                          <% (statusOptions || []).forEach(function (option) { %>
+                          <option value="<%= option.value %>" <%= filters?.status === option.value ? 'selected' : '' %>><%= option.label %></option>
+                          <% }); %>
+                        </select>
+                        <select class="form-control form-control-sm mr-2" name="planId">
+                          <option value="">플랜 전체</option>
+                          <% (plans || []).forEach(function (plan) { %>
+                          <option value="<%= plan.id %>" <%= Number(filters?.planId) === plan.id ? 'selected' : '' %>>
+                            <%= plan.name %> (<%= plan.tier %>)
+                          </option>
+                          <% }); %>
+                        </select>
+                        <div class="input-group input-group-sm mr-2" style="width: 200px;">
+                          <input
+                            type="text"
+                            class="form-control"
+                            name="keyword"
+                            value="<%= filters?.keywordInput ?? '' %>"
+                            placeholder="이메일/사용자/ID"
+                          />
+                          <div class="input-group-append">
+                            <button class="btn btn-outline-secondary" type="submit">
+                              <i class="fas fa-search"></i>
+                            </button>
+                          </div>
+                        </div>
+                        <a href="/adm/subscriptions" class="btn btn-sm btn-outline-dark">
+                          초기화
+                        </a>
+                      </form>
+                    </div>
+                  </div>
+                  <div class="card-body p-0" style="max-height: 560px; overflow-y: auto;">
+                    <table class="table table-hover text-nowrap">
+                      <thead>
+                        <tr>
+                          <th style="width: 70px;">ID</th>
+                          <th>사용자</th>
+                          <th>플랜</th>
+                          <th style="width: 100px;">상태</th>
+                          <th style="width: 150px;">시작일</th>
+                          <th style="width: 150px;">만료일</th>
+                          <th style="width: 90px;">자동갱신</th>
+                          <th style="width: 100px;">결제금액</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <% if (!subscriptions || !subscriptions.length) { %>
+                        <tr>
+                          <td colspan="8" class="text-center text-muted">구독 데이터가 없습니다.</td>
+                        </tr>
+                        <% } %>
+                        <% (subscriptions || []).forEach(function (item) { %>
+                        <tr class="<%= item.isSelected ? 'table-primary' : '' %>">
+                          <td>
+                            <a href="/adm/subscriptions/<%= item.id %><%= filters?.queryString ? '?' + filters.queryString : '' %>" class="font-weight-bold">
+                              #<%= item.id %>
+                            </a>
+                          </td>
+                          <td>
+                            <div class="d-flex flex-column">
+                              <strong><%= item.userEmail %></strong>
+                              <small class="text-muted">ID <%= item.userId %> · <%= item.userName %></small>
+                            </div>
+                          </td>
+                          <td>
+                            <div class="d-flex flex-column">
+                              <span><%= item.planName %></span>
+                              <small class="text-muted">Tier: <%= item.planTier %></small>
+                            </div>
+                          </td>
+                          <td>
+                            <span class="badge <%= item.statusBadgeClass %>"><%= item.statusLabel %></span>
+                          </td>
+                          <td><small class="text-muted"><%= item.startedAt %></small></td>
+                          <td><small class="text-muted"><%= item.expiresAt %></small></td>
+                          <td>
+                            <% if (item.autoRenew) { %>
+                            <span class="badge badge-success">ON</span>
+                            <% } else { %>
+                            <span class="badge badge-light border">OFF</span>
+                            <% } %>
+                          </td>
+                          <td><%= (item.amountPaid || 0).toLocaleString('ko-KR') %>원</td>
+                        </tr>
+                        <% }); %>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              <div class="col-lg-4">
+                <div class="card card-outline card-primary">
+                  <div class="card-header">
+                    <h3 class="card-title mb-0">선택한 구독</h3>
+                  </div>
+                  <div class="card-body">
+                    <% if (detailError) { %>
+                    <div class="alert alert-warning"><i class="fas fa-exclamation-triangle mr-2"></i><%= detailError %></div>
+                    <% } %>
+                    <% if (!selectedSubscription) { %>
+                    <p class="text-muted mb-0">좌측 목록에서 구독을 선택하면 상세 정보를 확인할 수 있습니다.</p>
+                    <% } else { %>
+                    <div class="mb-3">
+                      <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                          <strong class="d-block"><%= selectedSubscription.userEmail %></strong>
+                          <small class="text-muted">사용자 ID <%= selectedSubscription.userId %> · <%= selectedSubscription.userName %></small>
+                        </div>
+                        <span class="badge <%= selectedSubscription.statusBadgeClass %>"><%= selectedSubscription.statusLabel %></span>
+                      </div>
+                    </div>
+                    <dl class="row mb-0">
+                      <dt class="col-5">플랜</dt>
+                      <dd class="col-7"><%= selectedSubscription.planName %> (<%= selectedSubscription.planTier %>)</dd>
+                      <dt class="col-5">시작일</dt>
+                      <dd class="col-7"><%= selectedSubscription.startedAt %></dd>
+                      <dt class="col-5">만료일</dt>
+                      <dd class="col-7"><%= selectedSubscription.expiresAt %></dd>
+                      <dt class="col-5">자동 갱신</dt>
+                      <dd class="col-7"><%= selectedSubscription.autoRenew ? '사용' : '미사용' %></dd>
+                      <dt class="col-5">결제 수단</dt>
+                      <dd class="col-7"><%= selectedSubscription.paymentMethod %></dd>
+                      <dt class="col-5">결제 ID</dt>
+                      <dd class="col-7"><%= selectedSubscription.paymentId %></dd>
+                      <dt class="col-5">결제 금액</dt>
+                      <dd class="col-7"><%= (selectedSubscription.amountPaid || 0).toLocaleString('ko-KR') %>원</dd>
+                      <% if (selectedSubscription.cancelReason) { %>
+                      <dt class="col-5">취소 사유</dt>
+                      <dd class="col-7"><%= selectedSubscription.cancelReason %></dd>
+                      <% } %>
+                    </dl>
+                    <hr />
+                    <% if (selectedSubscription.stats) { %>
+                    <div class="mb-3">
+                      <h5 class="font-weight-bold">사용량</h5>
+                      <p class="mb-1">
+                        계약서 작성: <strong><%= selectedSubscription.stats.usage.contractsUsed %></strong> /
+                        <%= selectedSubscription.stats.usage.contractsLimit === -1 ? '무제한' : selectedSubscription.stats.usage.contractsLimit %>
+                      </p>
+                      <p class="mb-1">포인트 잔액: <strong><%= selectedSubscription.stats.points.currentBalance %></strong>점</p>
+                      <p class="mb-1 text-muted">누적 적립 <%= selectedSubscription.stats.points.totalEarned %> · 사용 <%= selectedSubscription.stats.points.totalSpent %></p>
+                    </div>
+                    <% } else { %>
+                    <div class="alert alert-light border">활성 구독 기준 통계를 불러올 수 없습니다.</div>
+                    <% } %>
+
+                    <hr />
+                    <h5 class="font-weight-bold">구독 정보 수정</h5>
+                    <form method="post" action="/adm/subscriptions/<%= selectedSubscription.id %>">
+                      <div class="form-group">
+                        <label>상태</label>
+                        <select name="status" class="form-control form-control-sm">
+                          <% (statusOptions || []).forEach(function (option) { %>
+                          <option value="<%= option.value %>" <%= selectedSubscription.status === option.value ? 'selected' : '' %>><%= option.label %></option>
+                          <% }); %>
+                        </select>
+                      </div>
+                      <div class="form-group">
+                        <label>만료일</label>
+                        <input type="datetime-local" name="expiresAt" class="form-control form-control-sm" value="<%= selectedSubscription.expiresAtInput %>" />
+                      </div>
+                      <div class="form-group">
+                        <label>결제 수단</label>
+                        <input type="text" name="paymentMethod" class="form-control form-control-sm" value="<%= selectedSubscription.paymentMethod !== '-' ? selectedSubscription.paymentMethod : '' %>" placeholder="예: card, bank" />
+                      </div>
+                      <div class="form-group">
+                        <label>결제 ID</label>
+                        <input type="text" name="paymentId" class="form-control form-control-sm" value="<%= selectedSubscription.paymentId !== '-' ? selectedSubscription.paymentId : '' %>" placeholder="외부 결제 ID" />
+                      </div>
+                      <div class="form-group">
+                        <label>결제 금액 (원)</label>
+                        <input type="number" name="amountPaid" class="form-control form-control-sm" value="<%= selectedSubscription.amountPaid ?? 0 %>" min="0" step="1000" />
+                      </div>
+                      <div class="form-group">
+                        <label>취소 사유</label>
+                        <textarea class="form-control form-control-sm" name="cancelReason" rows="2" placeholder="취소/보류 사유"><%= selectedSubscription.cancelReason ?? '' %></textarea>
+                      </div>
+                      <div class="custom-control custom-switch mb-3">
+                        <input type="hidden" name="autoRenew" value="off" />
+                        <input type="checkbox" class="custom-control-input" id="autoRenewSwitch" name="autoRenew" value="on" <%= selectedSubscription.autoRenew ? 'checked' : '' %> />
+                        <label class="custom-control-label" for="autoRenewSwitch">자동 갱신 사용</label>
+                      </div>
+                      <button type="submit" class="btn btn-primary btn-block">
+                        <i class="fas fa-save mr-1"></i> 구독 정보 저장
+                      </button>
+                    </form>
+                    <% } %>
+                  </div>
+                </div>
+
+                <div class="card card-outline card-secondary">
+                  <div class="card-header">
+                    <h3 class="card-title mb-0">수동 구독 생성</h3>
+                  </div>
+                  <div class="card-body">
+                    <form method="post" action="/adm/subscriptions">
+                      <div class="form-group">
+                        <label>사용자 ID</label>
+                        <input type="number" name="userId" class="form-control form-control-sm" placeholder="예: 101" required min="1" />
+                      </div>
+                      <div class="form-group">
+                        <label>플랜 선택</label>
+                        <select name="planId" class="form-control form-control-sm" required>
+                          <option value="">플랜을 선택하세요</option>
+                          <% (plans || []).forEach(function (plan) { %>
+                          <option value="<%= plan.id %>"><%= plan.name %> (<%= plan.tier %>)</option>
+                          <% }); %>
+                        </select>
+                      </div>
+                      <div class="form-group">
+                        <label>시작일</label>
+                        <input type="datetime-local" name="startedAt" class="form-control form-control-sm" value="<%= defaultStartedAtInput %>" required />
+                      </div>
+                      <div class="form-group">
+                        <label>만료일 (선택)</label>
+                        <input type="datetime-local" name="expiresAt" class="form-control form-control-sm" />
+                      </div>
+                      <div class="form-group">
+                        <label>상태</label>
+                        <select name="status" class="form-control form-control-sm">
+                          <% (statusOptions || []).forEach(function (option) { %>
+                          <option value="<%= option.value %>" <%= option.value === 'active' ? 'selected' : '' %>><%= option.label %></option>
+                          <% }); %>
+                        </select>
+                      </div>
+                      <div class="custom-control custom-switch mb-3">
+                        <input type="hidden" name="autoRenew" value="off" />
+                        <input type="checkbox" class="custom-control-input" id="createAutoRenew" name="autoRenew" value="on" />
+                        <label class="custom-control-label" for="createAutoRenew">자동 갱신</label>
+                      </div>
+                      <div class="form-group">
+                        <label>결제 금액 (원)</label>
+                        <input type="number" name="amountPaid" class="form-control form-control-sm" placeholder="0" min="0" step="1000" />
+                      </div>
+                      <div class="form-group">
+                        <label>결제 수단</label>
+                        <input type="text" name="paymentMethod" class="form-control form-control-sm" placeholder="card, bank, free" />
+                      </div>
+                      <div class="form-group">
+                        <label>결제 ID</label>
+                        <input type="text" name="paymentId" class="form-control form-control-sm" placeholder="외부 결제 ID (선택)" />
+                      </div>
+                      <button type="submit" class="btn btn-secondary btn-block">
+                        <i class="fas fa-plus-circle mr-1"></i> 구독 생성
+                      </button>
+                    </form>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <form id="logout-form" method="post" action="/adm/logout" style="display: none;"></form>
+
+      <footer class="main-footer text-sm">
+        <strong>ⓒ 인싸인 Admin</strong>
+        <div class="float-right d-none d-sm-inline">구독 현황 모니터링</div>
+      </footer>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.4/dist/jquery.min.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/overlayscrollbars@1.13.1/js/jquery.overlayScrollbars.min.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/js/adminlte.min.js" crossorigin="anonymous"></script>
+    <script>
+      document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('[data-action="logout"]').forEach(function (el) {
+          el.addEventListener('click', function (event) {
+            event.preventDefault();
+            document.getElementById('logout-form').submit();
+          });
+        });
+      });
+    </script>
+  </body>
+</html>

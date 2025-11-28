@@ -6,7 +6,7 @@ import 'package:insign/data/contract_repository.dart';
 import 'package:insign/data/services/session_service.dart';
 import 'package:insign/models/contract.dart';
 
-const List<String> _tabs = ['전체', '진행중', '완료', '기한만료'];
+const List<String> _tabs = ['전체', '작성중', '서명대기', '완료', '거절됨', '기한만료'];
 const String _datePlaceholder = '-';
 
 class ContractsScreen extends StatefulWidget {
@@ -79,15 +79,20 @@ class _ContractsScreenState extends State<ContractsScreen> {
 
     bool matchesTab(Contract contract) {
       final label = _statusLabel(contract);
+
       switch (_activeTab) {
         case '전체':
           return true;
-        case '진행중':
-          return ['기안 완료', '서명 대기', '서명 거절', '진행중'].contains(label);
+        case '작성중':
+          return label == '기안 완료';
+        case '서명대기':
+          return label == '서명 대기';
         case '완료':
           return label == '서명 완료';
+        case '거절됨':
+          return label == '서명 거절';
         case '기한만료':
-          return label == '기한만료' || _isExpired(contract);
+          return _isExpired(contract);
         default:
           return true;
       }
@@ -169,7 +174,33 @@ class _ContractsScreenState extends State<ContractsScreen> {
 
     final slivers = <Widget>[
       SliverPadding(
-        padding: const EdgeInsets.fromLTRB(20, 36, 20, 12),
+        padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
+        sliver: SliverToBoxAdapter(
+          child: Row(
+            children: [
+              const Text(
+                '계약',
+                style: TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF111827),
+                ),
+              ),
+              const Spacer(),
+              IconButton(
+                onPressed: () => context.push('/inbox'),
+                icon: const Icon(Icons.notifications_outlined),
+                style: IconButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: primaryColor,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      SliverPadding(
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
         sliver: SliverToBoxAdapter(child: _buildHeader(context)),
       ),
     ];
@@ -260,11 +291,6 @@ class _ContractsScreenState extends State<ContractsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          '계약 관리',
-          style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
-        ),
-        const SizedBox(height: 8),
         Text(
           _headerSubtitle(),
           style: const TextStyle(fontSize: 14, color: Color(0xFF6B7280)),

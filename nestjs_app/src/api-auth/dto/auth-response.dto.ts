@@ -6,7 +6,12 @@ export interface AuthResponse {
     lastLoginAt?: Date | null;
     provider?: string;
     avatarUrl?: string | null;
+    agreedToTerms?: boolean;
+    agreedToPrivacy?: boolean;
+    agreedToSensitive?: boolean;
+    agreedToMarketing?: boolean;
   };
   accessToken: string;
   expiresIn: number;
+  requiresTermsAgreement?: boolean;
 }

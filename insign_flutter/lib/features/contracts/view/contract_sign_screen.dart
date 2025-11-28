@@ -35,9 +35,12 @@ class _ContractSignScreenState extends State<ContractSignScreen> {
   final DateFormat _dateFormatter = DateFormat('yyyy.MM.dd');
   final DateFormat _dateTimeFormatter = DateFormat('yyyy.MM.dd HH:mm');
 
-  final TextEditingController _performerNameController = TextEditingController();
-  final TextEditingController _performerEmailController = TextEditingController();
-  final TextEditingController _performerContactController = TextEditingController();
+  final TextEditingController _performerNameController =
+      TextEditingController();
+  final TextEditingController _performerEmailController =
+      TextEditingController();
+  final TextEditingController _performerContactController =
+      TextEditingController();
 
   final Map<String, TextEditingController> _recipientControllers = {};
   final Map<String, Set<String>> _recipientCheckboxValues = {};
@@ -76,6 +79,9 @@ class _ContractSignScreenState extends State<ContractSignScreen> {
   String? _lastVerifiedEmail;
   String? _lastVerifiedContact;
 
+  // 전자서명 동의 관련
+  bool _agreedToEsignTerms = false;
+
   @override
   void initState() {
     super.initState();
@@ -98,9 +104,11 @@ class _ContractSignScreenState extends State<ContractSignScreen> {
   Map<String, dynamic>? get _metadata => _contract?.metadata;
 
   bool get _isDeclined =>
-      _contract?.status == 'signature_declined' || (_contract?.signatureDeclinedAt?.isNotEmpty ?? false);
+      _contract?.status == 'signature_declined' ||
+      (_contract?.signatureDeclinedAt?.isNotEmpty ?? false);
   bool get _isCompleted =>
-      _contract?.status == 'signature_completed' || (_contract?.signatureCompletedAt?.isNotEmpty ?? false);
+      _contract?.status == 'signature_completed' ||
+      (_contract?.signatureCompletedAt?.isNotEmpty ?? false);
   bool get _isExpired {
     final end = _contract?.endDate;
     if (end == null) return false;
@@ -150,7 +158,8 @@ class _ContractSignScreenState extends State<ContractSignScreen> {
         payload: VerifyContractPerformerPayload(
           performerName: name,
           performerEmail: email,
-          performerContact: sanitizedContact.isNotEmpty ? sanitizedContact : contact,
+          performerContact:
+              sanitizedContact.isNotEmpty ? sanitizedContact : contact,
         ),
       );
       await _hydrateContract(contract);
@@ -165,7 +174,8 @@ class _ContractSignScreenState extends State<ContractSignScreen> {
         if (message.contains('서명 링크')) {
           _tokenError = message.isEmpty ? '유효하지 않은 서명 링크입니다.' : message;
         } else {
-          _formError = message.isEmpty ? '정보를 확인할 수 없습니다. 다시 시도해 주세요.' : message;
+          _formError =
+              message.isEmpty ? '정보를 확인할 수 없습니다. 다시 시도해 주세요.' : message;
         }
       });
     } finally {
@@ -183,7 +193,8 @@ class _ContractSignScreenState extends State<ContractSignScreen> {
 
     if ((templateContent == null || templateContent.trim().isEmpty) &&
         contract.templateId != null &&
-        sessionToken != null && sessionToken.isNotEmpty) {
+        sessionToken != null &&
+        sessionToken.isNotEmpty) {
       try {
         final template = await _templateRepository.fetchTemplate(
           contract.templateId!,
@@ -227,7 +238,8 @@ class _ContractSignScreenState extends State<ContractSignScreen> {
         ) ??
         const <TemplateFormSection>[];
     final recipientCompleted = recipientSectionsCandidate.isEmpty ||
-        _areRecipientFieldsComplete(recipientSectionsCandidate, recipientValues);
+        _areRecipientFieldsComplete(
+            recipientSectionsCandidate, recipientValues);
 
     setState(() {
       _contract = contract;
@@ -247,7 +259,8 @@ class _ContractSignScreenState extends State<ContractSignScreen> {
     if (contract.performerName != null && contract.performerName!.isNotEmpty) {
       _performerNameController.text = contract.performerName!;
     }
-    if (contract.performerEmail != null && contract.performerEmail!.isNotEmpty) {
+    if (contract.performerEmail != null &&
+        contract.performerEmail!.isNotEmpty) {
       _performerEmailController.text = contract.performerEmail!;
     }
     final performerContact = contract.performerContact ?? _lastVerifiedContact;
@@ -267,9 +280,13 @@ class _ContractSignScreenState extends State<ContractSignScreen> {
       final value = entry.value;
       if (value is List) {
         _recipientCheckboxValues[key] = value.map((e) => e.toString()).toSet();
+      } else if (value is bool) {
+        _recipientCheckboxValues.remove(key);
+        _recipientControllers.remove(key);
       } else {
         _recipientCheckboxValues.remove(key);
-        final controller = _recipientControllers.putIfAbsent(key, () => TextEditingController());
+        final controller = _recipientControllers.putIfAbsent(
+            key, () => TextEditingController());
         controller.text = value?.toString() ?? '';
       }
     }
@@ -323,7 +340,10 @@ class _ContractSignScreenState extends State<ContractSignScreen> {
       }
 
       final existing = _recipientFormValues[fieldId]?.toString().trim();
-      if (!overwriteExisting && existing != null && existing.isNotEmpty && existing != text) {
+      if (!overwriteExisting &&
+          existing != null &&
+          existing.isNotEmpty &&
+          existing != text) {
         return;
       }
 
@@ -380,7 +400,9 @@ class _ContractSignScreenState extends State<ContractSignScreen> {
   }
 
   Future<void> _refreshContract() async {
-    if (_lastVerifiedName == null || _lastVerifiedEmail == null || _lastVerifiedContact == null) {
+    if (_lastVerifiedName == null ||
+        _lastVerifiedEmail == null ||
+        _lastVerifiedContact == null) {
       return;
     }
     setState(() => _refreshing = true);
@@ -398,7 +420,8 @@ class _ContractSignScreenState extends State<ContractSignScreen> {
       final message = error.toString().replaceFirst('Exception: ', '');
       if (mounted && message.isNotEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(message), duration: const Duration(seconds: 3)),
+          SnackBar(
+              content: Text(message), duration: const Duration(seconds: 3)),
         );
       }
     } finally {
@@ -406,6 +429,102 @@ class _ContractSignScreenState extends State<ContractSignScreen> {
         setState(() => _refreshing = false);
       }
     }
+  }
+
+  Future<bool> _showEsignAgreementDialog() async {
+    bool agreed1 = false;
+    bool agreed2 = false;
+    bool agreed3 = false;
+    bool agreed4 = false;
+
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            final allAgreed = agreed1 && agreed2 && agreed3 && agreed4;
+
+            return AlertDialog(
+              title: const Text(
+                '인싸인 전자서명에 대한 동의',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    CheckboxListTile(
+                      value: agreed1,
+                      onChanged: (val) =>
+                          setState(() => agreed1 = val ?? false),
+                      controlAffinity: ListTileControlAffinity.leading,
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text(
+                        '전자서명 및 전자문서의 법적 효력에 대해 동의합니다.',
+                        style: TextStyle(fontSize: 14),
+                      ),
+                    ),
+                    CheckboxListTile(
+                      value: agreed2,
+                      onChanged: (val) =>
+                          setState(() => agreed2 = val ?? false),
+                      controlAffinity: ListTileControlAffinity.leading,
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text(
+                        '서명 완료 후 전송되는 전자문서를 원본으로 인정합니다.',
+                        style: TextStyle(fontSize: 14),
+                      ),
+                    ),
+                    CheckboxListTile(
+                      value: agreed3,
+                      onChanged: (val) =>
+                          setState(() => agreed3 = val ?? false),
+                      controlAffinity: ListTileControlAffinity.leading,
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text(
+                        '모든 서명자가 전자서명에 정당한 권한을 가지는 것을 확인했습니다.',
+                        style: TextStyle(fontSize: 14),
+                      ),
+                    ),
+                    CheckboxListTile(
+                      value: agreed4,
+                      onChanged: (val) =>
+                          setState(() => agreed4 = val ?? false),
+                      controlAffinity: ListTileControlAffinity.leading,
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text(
+                        '기타 자세한 내용은 전자서명 이용약관에 따라 동의합니다.',
+                        style: TextStyle(fontSize: 14),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(false),
+                  child: const Text('취소', style: TextStyle(color: Colors.grey)),
+                ),
+                ElevatedButton(
+                  onPressed:
+                      allAgreed ? () => Navigator.of(context).pop(true) : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: primaryColor,
+                    foregroundColor: Colors.white,
+                    disabledBackgroundColor: Colors.grey[300],
+                  ),
+                  child: const Text('동의하고 서명 완료'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    return result ?? false;
   }
 
   Future<void> _handleDecline() async {
@@ -443,7 +562,8 @@ class _ContractSignScreenState extends State<ContractSignScreen> {
       await _hydrateContract(updated);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('서명을 거절했습니다.'), duration: Duration(seconds: 3)),
+          const SnackBar(
+              content: Text('서명을 거절했습니다.'), duration: Duration(seconds: 3)),
         );
       }
     } catch (error) {
@@ -466,9 +586,29 @@ class _ContractSignScreenState extends State<ContractSignScreen> {
     if (_contract == null) return;
     if (_signatureDataUrl == null || _signatureDataUrl!.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('서명을 작성하거나 이미지를 첨부해 주세요.'), duration: Duration(seconds: 3)),
+        const SnackBar(
+            content: Text('서명을 작성하거나 이미지를 첨부해 주세요.'),
+            duration: Duration(seconds: 3)),
       );
       return;
+    }
+
+    // 전자서명 동의 확인
+    if (!_agreedToEsignTerms) {
+      final agreed = await _showEsignAgreementDialog();
+      if (!agreed) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+                content: Text('전자서명 동의가 필요합니다.'),
+                duration: Duration(seconds: 3)),
+          );
+        }
+        return;
+      }
+      setState(() {
+        _agreedToEsignTerms = true;
+      });
     }
 
     final errors = _validateRecipientForm();
@@ -478,7 +618,9 @@ class _ContractSignScreenState extends State<ContractSignScreen> {
         _recipientFormTouched = true;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('필수 항목을 모두 입력해 주세요.'), duration: Duration(seconds: 3)),
+        const SnackBar(
+            content: Text('필수 항목을 모두 입력해 주세요.'),
+            duration: Duration(seconds: 3)),
       );
       return;
     }
@@ -503,7 +645,8 @@ class _ContractSignScreenState extends State<ContractSignScreen> {
       await _hydrateContract(updated);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('서명이 완료되었습니다.'), duration: Duration(seconds: 3)),
+          const SnackBar(
+              content: Text('서명이 완료되었습니다.'), duration: Duration(seconds: 3)),
         );
       }
     } catch (error) {
@@ -542,6 +685,13 @@ class _ContractSignScreenState extends State<ContractSignScreen> {
         if (field.type.toLowerCase() == 'signature') continue;
         if (!field.required) continue;
         final value = _getRecipientValue(field.id);
+        if (_isSingleCheckboxField(field)) {
+          final boolValue = value is bool ? value : _coerceRecipientBool(value);
+          if (!boolValue) {
+            errors[field.id] = '${field.label}에 동의해 주세요.';
+          }
+          continue;
+        }
         final hasValue = value is String
             ? value.trim().isNotEmpty
             : value is Iterable
@@ -574,6 +724,7 @@ class _ContractSignScreenState extends State<ContractSignScreen> {
 
   bool _hasValue(dynamic value) {
     if (value == null) return false;
+    if (value is bool) return value;
     if (value is String) return value.trim().isNotEmpty;
     if (value is Iterable) return value.isNotEmpty;
     if (value is Map) return value.isNotEmpty;
@@ -611,7 +762,9 @@ class _ContractSignScreenState extends State<ContractSignScreen> {
                 final data = await _signatureController.toPngBytes();
                 if (data == null || data.isEmpty) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('서명을 그려 주세요.'), duration: Duration(seconds: 2)),
+                    const SnackBar(
+                        content: Text('서명을 그려 주세요.'),
+                        duration: Duration(seconds: 2)),
                   );
                   return;
                 }
@@ -625,7 +778,9 @@ class _ContractSignScreenState extends State<ContractSignScreen> {
                 Navigator.of(context).pop();
               } catch (_) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('서명을 저장하지 못했습니다.'), duration: Duration(seconds: 2)),
+                  const SnackBar(
+                      content: Text('서명을 저장하지 못했습니다.'),
+                      duration: Duration(seconds: 2)),
                 );
               }
             }
@@ -642,7 +797,9 @@ class _ContractSignScreenState extends State<ContractSignScreen> {
                 final file = result.files.first;
                 if (file.bytes == null) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('선택한 이미지를 불러오지 못했습니다.'), duration: Duration(seconds: 2)),
+                    const SnackBar(
+                        content: Text('선택한 이미지를 불러오지 못했습니다.'),
+                        duration: Duration(seconds: 2)),
                   );
                   return;
                 }
@@ -687,7 +844,10 @@ class _ContractSignScreenState extends State<ContractSignScreen> {
                     children: [
                       const Text(
                         '서명 입력',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+                        style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF111827)),
                       ),
                       IconButton(
                         onPressed: () => Navigator.of(context).pop(),
@@ -709,7 +869,8 @@ class _ContractSignScreenState extends State<ContractSignScreen> {
                       });
                     },
                     borderRadius: BorderRadius.circular(16),
-                    constraints: const BoxConstraints(minWidth: 120, minHeight: 40),
+                    constraints:
+                        const BoxConstraints(minWidth: 120, minHeight: 40),
                     children: const [
                       Text('직접 서명'),
                       Text('이미지 첨부'),
@@ -724,7 +885,10 @@ class _ContractSignScreenState extends State<ContractSignScreen> {
                         borderRadius: BorderRadius.circular(18),
                         border: Border.all(color: const Color(0xFFE2E8F0)),
                         boxShadow: const [
-                          BoxShadow(color: Color(0x0F111827), blurRadius: 12, offset: Offset(0, 6)),
+                          BoxShadow(
+                              color: Color(0x0F111827),
+                              blurRadius: 12,
+                              offset: Offset(0, 6)),
                         ],
                       ),
                       child: Signature(
@@ -741,13 +905,17 @@ class _ContractSignScreenState extends State<ContractSignScreen> {
                         borderRadius: BorderRadius.circular(18),
                         border: Border.all(color: const Color(0xFFE2E8F0)),
                         boxShadow: const [
-                          BoxShadow(color: Color(0x0F111827), blurRadius: 12, offset: Offset(0, 6)),
+                          BoxShadow(
+                              color: Color(0x0F111827),
+                              blurRadius: 12,
+                              offset: Offset(0, 6)),
                         ],
                       ),
                       alignment: Alignment.center,
                       child: localPreview != null
                           ? Image.memory(localPreview!, fit: BoxFit.contain)
-                          : const Text('이미지를 업로드해 주세요.', style: TextStyle(color: Color(0xFF94A3B8))),
+                          : const Text('이미지를 업로드해 주세요.',
+                              style: TextStyle(color: Color(0xFF94A3B8))),
                     ),
                     const SizedBox(height: 12),
                     OutlinedButton.icon(
@@ -799,7 +967,9 @@ class _ContractSignScreenState extends State<ContractSignScreen> {
         _recipientFormTouched = true;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('필수 항목을 모두 입력해 주세요.'), duration: Duration(seconds: 3)),
+        const SnackBar(
+            content: Text('필수 항목을 모두 입력해 주세요.'),
+            duration: Duration(seconds: 3)),
       );
       return;
     }
@@ -845,8 +1015,13 @@ class _ContractSignScreenState extends State<ContractSignScreen> {
     if (digitsOnly.isEmpty) {
       return '';
     }
-    final digits = digitsOnly.length > 11 ? digitsOnly.substring(0, 11) : digitsOnly;
-    final areaLength = digits.startsWith('02') ? 2 : digits.length >= 3 ? 3 : digits.length;
+    final digits =
+        digitsOnly.length > 11 ? digitsOnly.substring(0, 11) : digitsOnly;
+    final areaLength = digits.startsWith('02')
+        ? 2
+        : digits.length >= 3
+            ? 3
+            : digits.length;
     final area = digits.substring(0, areaLength);
     if (digits.length == areaLength) {
       return area;
@@ -868,7 +1043,9 @@ class _ContractSignScreenState extends State<ContractSignScreen> {
     final contract = _contract;
     if (contract == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('계약 정보를 불러오지 못했습니다.'), duration: Duration(seconds: 2)),
+        const SnackBar(
+            content: Text('계약 정보를 불러오지 못했습니다.'),
+            duration: Duration(seconds: 2)),
       );
       return;
     }
@@ -884,7 +1061,8 @@ class _ContractSignScreenState extends State<ContractSignScreen> {
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('계약서를 PDF로 저장했습니다.'), duration: Duration(seconds: 2)),
+        const SnackBar(
+            content: Text('계약서를 PDF로 저장했습니다.'), duration: Duration(seconds: 2)),
       );
     } catch (error) {
       if (!mounted) return;
@@ -961,7 +1139,8 @@ class _ContractSignScreenState extends State<ContractSignScreen> {
     return const {};
   }
 
-  Map<String, dynamic> _metadataRecipientValues(Map<String, dynamic>? metadata) {
+  Map<String, dynamic> _metadataRecipientValues(
+      Map<String, dynamic>? metadata) {
     if (metadata == null) return {};
     final raw = metadata['recipientFormValues'];
     if (raw is Map<String, dynamic>) {
@@ -999,7 +1178,11 @@ class _ContractSignScreenState extends State<ContractSignScreen> {
   List<_StatusStep> _statusSteps(Contract contract) {
     return [
       _StatusStep('기안 완료', contract.createdAt != null),
-      _StatusStep('서명 대기', contract.status == 'active' || contract.signatureSentAt != null || _isDeclined),
+      _StatusStep(
+          '서명 대기',
+          contract.status == 'active' ||
+              contract.signatureSentAt != null ||
+              _isDeclined),
       _StatusStep('서명 완료', _isCompleted),
     ];
   }
@@ -1066,8 +1249,10 @@ class _ContractSignScreenState extends State<ContractSignScreen> {
 
     _templateFormValues.forEach((key, value) => assign(key, value));
     _recipientFormValues.forEach((key, value) => assign(key, value));
-    _recipientControllers.forEach((key, controller) => assign(key, controller.text));
-    _recipientCheckboxValues.forEach((key, value) => assign(key, value.toList()));
+    _recipientControllers
+        .forEach((key, controller) => assign(key, controller.text));
+    _recipientCheckboxValues
+        .forEach((key, value) => assign(key, value.toList()));
 
     final metadata = _metadata;
     metadata?.forEach((key, value) {
@@ -1081,9 +1266,12 @@ class _ContractSignScreenState extends State<ContractSignScreen> {
     assign('clientName', contract.clientName);
     assign('clientContact', contract.clientContact);
     assign('clientEmail', contract.clientEmail);
-    assign('performerName', contract.performerName ?? _performerNameController.text);
-    assign('performerContact', contract.performerContact ?? _performerContactController.text);
-    assign('performerEmail', contract.performerEmail ?? _performerEmailController.text);
+    assign('performerName',
+        contract.performerName ?? _performerNameController.text);
+    assign('performerContact',
+        contract.performerContact ?? _performerContactController.text);
+    assign('performerEmail',
+        contract.performerEmail ?? _performerEmailController.text);
     final contractDetails = contract.details?.trim();
     if (contractDetails != null && contractDetails.isNotEmpty) {
       assign('details', contractDetails);
@@ -1094,13 +1282,17 @@ class _ContractSignScreenState extends State<ContractSignScreen> {
     assign('lenderName', contract.clientName);
     assign('lenderContact', contract.clientContact);
     assign('lenderEmail', contract.clientEmail);
-    assign('borrowerName', contract.performerName ?? _performerNameController.text);
-    assign('borrowerContact', contract.performerContact ?? _performerContactController.text);
-    assign('borrowerEmail', contract.performerEmail ?? _performerEmailController.text);
+    assign('borrowerName',
+        contract.performerName ?? _performerNameController.text);
+    assign('borrowerContact',
+        contract.performerContact ?? _performerContactController.text);
+    assign('borrowerEmail',
+        contract.performerEmail ?? _performerEmailController.text);
     assign('createdAt', _formatDateTime(contract.createdAt));
     assign('updatedAt', _formatDateTime(contract.updatedAt));
     assign('signatureSentAt', _formatDateTime(contract.signatureSentAt));
-    assign('signatureCompletedAt', _formatDateTime(contract.signatureCompletedAt));
+    assign(
+        'signatureCompletedAt', _formatDateTime(contract.signatureCompletedAt));
 
     final clientSignedAt = _formatDateTime(metadata?['clientSignedAt']);
     if (clientSignedAt.isNotEmpty && clientSignedAt != '-') {
@@ -1122,9 +1314,9 @@ class _ContractSignScreenState extends State<ContractSignScreen> {
 
     // 갑(계약 작성자)의 서명 이미지 가져오기
     final clientSig = metadata?['authorSignatureImage'] ??
-                     metadata?['authorSignature'] ??
-                     metadata?['clientSignature'] ??
-                     metadata?['clientSignatureImage'];
+        metadata?['authorSignature'] ??
+        metadata?['clientSignature'] ??
+        metadata?['clientSignatureImage'];
     if (clientSig is String && clientSig.isNotEmpty) {
       final tag = _signatureImgTag(_resolveSignatureUrl(clientSig));
       if (tag != null) {
@@ -1176,7 +1368,8 @@ class _ContractSignScreenState extends State<ContractSignScreen> {
       }
     }
 
-    final replaced = content.replaceAllMapped(RegExp(r'{{\s*([^}]+)\s*}}'), (match) {
+    final replaced =
+        content.replaceAllMapped(RegExp(r'{{\s*([^}]+)\s*}}'), (match) {
       final key = match.group(1)?.trim();
       if (key == null || key.isEmpty) return '';
       return values[key] ?? '';
@@ -1185,7 +1378,8 @@ class _ContractSignScreenState extends State<ContractSignScreen> {
     return normalizeContractHtmlLayout(cleaned);
   }
 
-  Map<String, String>? _htmlStylesBuilder(dynamic element) => buildContractHtmlStyles(element);
+  Map<String, String>? _htmlStylesBuilder(dynamic element) =>
+      buildContractHtmlStyles(element);
 
   String? _resolveSignatureUrl(dynamic value) {
     if (value == null) return null;
@@ -1243,7 +1437,10 @@ class _ContractSignScreenState extends State<ContractSignScreen> {
       return value.map(_normalizeValue).where((v) => v.isNotEmpty).join(', ');
     }
     if (value is Map) {
-      return value.values.map(_normalizeValue).where((v) => v.isNotEmpty).join(', ');
+      return value.values
+          .map(_normalizeValue)
+          .where((v) => v.isNotEmpty)
+          .join(', ');
     }
     return value.toString();
   }
@@ -1279,12 +1476,14 @@ class _ContractSignScreenState extends State<ContractSignScreen> {
             Text(
               message,
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 16, color: Color(0xFF1F2937), height: 1.5),
+              style: const TextStyle(
+                  fontSize: 16, color: Color(0xFF1F2937), height: 1.5),
             ),
             const SizedBox(height: 20),
             ElevatedButton(
               onPressed: () => Navigator.of(context).maybePop(),
-              style: ElevatedButton.styleFrom(backgroundColor: primaryColor, foregroundColor: Colors.white),
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: primaryColor, foregroundColor: Colors.white),
               child: const Text('닫기'),
             ),
           ],
@@ -1301,12 +1500,16 @@ class _ContractSignScreenState extends State<ContractSignScreen> {
         children: [
           const Text(
             '수행자 본인 확인',
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+            style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF111827)),
           ),
           const SizedBox(height: 12),
           const Text(
             '이메일로 전달받은 계약 요청에 기재된 정보와 동일하게 입력해 주세요. 정보가 확인되면 계약 내용을 열람하고 서명을 진행할 수 있습니다.',
-            style: TextStyle(fontSize: 14, color: Color(0xFF475569), height: 1.5),
+            style:
+                TextStyle(fontSize: 14, color: Color(0xFF475569), height: 1.5),
           ),
           const SizedBox(height: 24),
           _buildInputField(
@@ -1328,7 +1531,9 @@ class _ContractSignScreenState extends State<ContractSignScreen> {
             controller: _performerContactController,
             enabled: !_verifying,
             keyboardType: TextInputType.phone,
-            inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9+\- ]'))],
+            inputFormatters: [
+              FilteringTextInputFormatter.allow(RegExp(r'[0-9+\- ]'))
+            ],
             onChanged: (value) {
               final formatted = _formatKoreanPhoneNumber(value);
               if (formatted != value) {
@@ -1355,21 +1560,53 @@ class _ContractSignScreenState extends State<ContractSignScreen> {
                 backgroundColor: primaryColor,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(18)),
               ),
               child: _verifying
                   ? const SizedBox(
                       height: 20,
                       width: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: Colors.white),
                     )
-                  : const Text('계약 확인하기', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                  : const Text('계약 확인하기',
+                      style:
+                          TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
             ),
           ),
           const SizedBox(height: 20),
+          // 피싱 방지 안내
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFEF3C7),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: const Color(0xFFFCD34D), width: 1),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: const [
+                Icon(Icons.warning_amber_rounded,
+                    color: Color(0xFFF59E0B), size: 20),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    '⚠️ 피싱 사기 주의\n'
+                    '사기, 사칭 사례에 주의해 주세요. 불법/사기가 의심되는 문서는 서명하지 마시고, '
+                    '의심스러운 경우 요청자에게 직접 확인하세요.',
+                    style: TextStyle(
+                        fontSize: 12, color: Color(0xFF92400E), height: 1.5),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
           const Text(
             '※ 정보가 일치하지 않으면 서명 링크가 보호되어 계약 내용을 열람할 수 없습니다.',
-            style: TextStyle(fontSize: 12, color: Color(0xFF94A3B8), height: 1.5),
+            style:
+                TextStyle(fontSize: 12, color: Color(0xFF94A3B8), height: 1.5),
           ),
         ],
       ),
@@ -1420,13 +1657,17 @@ class _ContractSignScreenState extends State<ContractSignScreen> {
             children: [
               const Text(
                 '추가 정보 입력',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+                style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF111827)),
               ),
               if (_refreshing)
                 const SizedBox(
                   height: 20,
                   width: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: primaryColor),
+                  child: CircularProgressIndicator(
+                      strokeWidth: 2, color: primaryColor),
                 ),
             ],
           ),
@@ -1437,7 +1678,10 @@ class _ContractSignScreenState extends State<ContractSignScreen> {
               color: Colors.white,
               borderRadius: BorderRadius.circular(20),
               boxShadow: const [
-                BoxShadow(color: Color(0x1F111827), blurRadius: 14, offset: Offset(0, 8)),
+                BoxShadow(
+                    color: Color(0x1F111827),
+                    blurRadius: 14,
+                    offset: Offset(0, 8)),
               ],
             ),
             child: Column(
@@ -1447,12 +1691,16 @@ class _ContractSignScreenState extends State<ContractSignScreen> {
                 SizedBox(height: 12),
                 Text(
                   '계약에 필요한 추가 정보를 입력해 주세요.',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+                  style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF111827)),
                 ),
                 SizedBox(height: 8),
                 Text(
                   '모든 필수 항목을 제출하면 계약 내용을 확인하고 서명을 진행할 수 있습니다.',
-                  style: TextStyle(fontSize: 13, color: Color(0xFF475569), height: 1.5),
+                  style: TextStyle(
+                      fontSize: 13, color: Color(0xFF475569), height: 1.5),
                 ),
               ],
             ),
@@ -1468,9 +1716,11 @@ class _ContractSignScreenState extends State<ContractSignScreen> {
                 backgroundColor: primaryColor,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(18)),
               ),
-              child: const Text('정보 제출 후 계속', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+              child: const Text('정보 제출 후 계속',
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
             ),
           ),
         ],
@@ -1484,13 +1734,17 @@ class _ContractSignScreenState extends State<ContractSignScreen> {
       children: [
         const Text(
           '계약 서명',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+          style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF111827)),
         ),
         if (_refreshing)
           const SizedBox(
             height: 20,
             width: 20,
-            child: CircularProgressIndicator(strokeWidth: 2, color: primaryColor),
+            child:
+                CircularProgressIndicator(strokeWidth: 2, color: primaryColor),
           ),
       ],
     );
@@ -1519,7 +1773,8 @@ class _ContractSignScreenState extends State<ContractSignScreen> {
               borderRadius: BorderRadius.circular(24),
             ),
             alignment: Alignment.center,
-            child: const Icon(Icons.description_outlined, color: Colors.white, size: 30),
+            child: const Icon(Icons.description_outlined,
+                color: Colors.white, size: 30),
           ),
           const SizedBox(height: 16),
           Text(
@@ -1538,7 +1793,8 @@ class _ContractSignScreenState extends State<ContractSignScreen> {
             style: const TextStyle(fontSize: 13, color: Color(0xFF64748B)),
           ),
           const SizedBox(height: 4),
-          Text('계약 ID #${contract.id}', style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
+          Text('계약 ID #${contract.id}',
+              style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
           const SizedBox(height: 12),
           _StatusChip(label: statusLabel, status: contract.status),
           if (_isExpired)
@@ -1547,9 +1803,11 @@ class _ContractSignScreenState extends State<ContractSignScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: const [
-                  Icon(Icons.warning_amber_rounded, size: 16, color: Color(0xFFF97316)),
+                  Icon(Icons.warning_amber_rounded,
+                      size: 16, color: Color(0xFFF97316)),
                   SizedBox(width: 6),
-                  Text('계약 기간이 만료되었습니다.', style: TextStyle(fontSize: 12, color: Color(0xFFF97316))),
+                  Text('계약 기간이 만료되었습니다.',
+                      style: TextStyle(fontSize: 12, color: Color(0xFFF97316))),
                 ],
               ),
             ),
@@ -1569,7 +1827,10 @@ class _ContractSignScreenState extends State<ContractSignScreen> {
         children: [
           const Text(
             '계약 진행 상태',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+            style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF111827)),
           ),
           const SizedBox(height: 16),
           Column(
@@ -1587,12 +1848,16 @@ class _ContractSignScreenState extends State<ContractSignScreen> {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: const [
-                      Icon(Icons.error_outline, size: 16, color: Color(0xFFDC2626)),
+                      Icon(Icons.error_outline,
+                          size: 16, color: Color(0xFFDC2626)),
                       SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           '서명이 거절되어 절차가 중단되었습니다. 계약자에게 별도로 연락해 주세요.',
-                          style: TextStyle(fontSize: 12, color: Color(0xFFDC2626), height: 1.5),
+                          style: TextStyle(
+                              fontSize: 12,
+                              color: Color(0xFFDC2626),
+                              height: 1.5),
                         ),
                       ),
                     ],
@@ -1615,7 +1880,11 @@ class _ContractSignScreenState extends State<ContractSignScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('추가 정보 입력', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF111827))),
+          const Text('추가 정보 입력',
+              style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF111827))),
           const SizedBox(height: 12),
           Text(
             isCompleted
@@ -1649,14 +1918,17 @@ class _ContractSignScreenState extends State<ContractSignScreen> {
             child: ElevatedButton(
               onPressed: _handleCompleteRecipientForm,
               style: ElevatedButton.styleFrom(
-                backgroundColor: isCompleted ? const Color(0xFF4CAF50) : primaryColor,
+                backgroundColor:
+                    isCompleted ? const Color(0xFF4CAF50) : primaryColor,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16)),
               ),
               child: Text(
                 isCompleted ? '추가 정보 다시 저장' : '추가 정보 저장',
-                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                style:
+                    const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
               ),
             ),
           ),
@@ -1671,7 +1943,10 @@ class _ContractSignScreenState extends State<ContractSignScreen> {
       children: [
         Text(
           section.title,
-          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Color(0xFF1F2937)),
+          style: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF1F2937)),
         ),
         if (section.description != null && section.description!.isNotEmpty)
           Padding(
@@ -1694,7 +1969,27 @@ class _ContractSignScreenState extends State<ContractSignScreen> {
   bool _isResidentRecipientField(TemplateFieldDefinition field) {
     final label = field.label;
     final loweredId = field.id.toLowerCase();
-    return label.contains('주민') || label.contains('사업자') || loweredId.contains('resident');
+    return label.contains('주민') ||
+        label.contains('사업자') ||
+        loweredId.contains('resident');
+  }
+
+  bool _isSingleCheckboxField(TemplateFieldDefinition field) {
+    return field.type.toLowerCase() == 'checkbox' && field.options.isEmpty;
+  }
+
+  bool _coerceRecipientBool(dynamic value) {
+    if (value is bool) {
+      return value;
+    }
+    if (value is num) {
+      return value != 0;
+    }
+    if (value is String) {
+      final normalized = value.trim().toLowerCase();
+      return normalized == 'true' || normalized == '1' || normalized == 'yes';
+    }
+    return false;
   }
 
   String _extractResidentDigits(String input) {
@@ -1736,31 +2031,60 @@ class _ContractSignScreenState extends State<ContractSignScreen> {
     if (isResidentField) {
       input = _buildRecipientResidentField(field);
     } else if (type == 'checkbox') {
-      final options = field.options;
-      final selected = _recipientCheckboxValues[field.id] ?? <String>{};
-      input = Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        children: options
-            .map(
-              (option) => FilterChip(
-                label: Text(option.label),
-                selected: selected.contains(option.value),
-                onSelected: (value) {
-                  setState(() {
-                    final set = _recipientCheckboxValues.putIfAbsent(field.id, () => <String>{});
-                    if (value) {
-                      set.add(option.value);
-                    } else {
-                      set.remove(option.value);
-                    }
-                    _recipientFormTouched = true;
-                  });
-                },
-              ),
-            )
-            .toList(),
-      );
+      if (_isSingleCheckboxField(field)) {
+        final currentValue =
+            _coerceRecipientBool(_recipientFormValues[field.id]);
+        input = Align(
+          alignment: Alignment.centerLeft,
+          child: InkWell(
+            onTap: field.readonly
+                ? null
+                : () => _setRecipientBooleanField(field, !currentValue),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Checkbox(
+                  value: currentValue,
+                  onChanged: field.readonly
+                      ? null
+                      : (value) =>
+                          _setRecipientBooleanField(field, value ?? false),
+                ),
+                const SizedBox(width: 8),
+                Text(currentValue ? '선택됨' : '선택 안 됨',
+                    style: const TextStyle(fontSize: 13)),
+              ],
+            ),
+          ),
+        );
+      } else {
+        final options = field.options;
+        final selected = _recipientCheckboxValues[field.id] ?? <String>{};
+        input = Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: options
+              .map(
+                (option) => FilterChip(
+                  label: Text(option.label),
+                  selected: selected.contains(option.value),
+                  onSelected: (value) {
+                    setState(() {
+                      final set = _recipientCheckboxValues.putIfAbsent(
+                          field.id, () => <String>{});
+                      if (value) {
+                        set.add(option.value);
+                      } else {
+                        set.remove(option.value);
+                      }
+                      _recipientFormTouched = true;
+                    });
+                  },
+                ),
+              )
+              .toList(),
+        );
+      }
     } else if (type == 'radio') {
       final options = field.options;
       final current = _recipientFormValues[field.id]?.toString();
@@ -1792,7 +2116,8 @@ class _ContractSignScreenState extends State<ContractSignScreen> {
         value: current?.isNotEmpty == true ? current : null,
         decoration: _inputDecoration(field.placeholder ?? '선택'),
         items: field.options
-            .map((option) => DropdownMenuItem<String>(value: option.value, child: Text(option.label)))
+            .map((option) => DropdownMenuItem<String>(
+                value: option.value, child: Text(option.label)))
             .toList(),
         onChanged: (value) {
           setState(() {
@@ -1806,10 +2131,13 @@ class _ContractSignScreenState extends State<ContractSignScreen> {
         },
       );
     } else if (type == 'date') {
-      final controller = _recipientControllers.putIfAbsent(field.id, () => TextEditingController());
+      final controller = _recipientControllers.putIfAbsent(
+          field.id, () => TextEditingController());
 
       // readonly 필드인 경우 자동으로 현재 날짜 설정
-      if (field.readonly && (_recipientFormValues[field.id] == null || _recipientFormValues[field.id].toString().isEmpty)) {
+      if (field.readonly &&
+          (_recipientFormValues[field.id] == null ||
+              _recipientFormValues[field.id].toString().isEmpty)) {
         final today = DateTime.now().toIso8601String().split('T')[0];
         _recipientFormValues[field.id] = today;
         controller.text = today;
@@ -1819,64 +2147,79 @@ class _ContractSignScreenState extends State<ContractSignScreen> {
         controller: controller,
         readOnly: true,
         enabled: !field.readonly, // readonly 필드는 비활성화
-        decoration: _inputDecoration(
-          field.readonly
+        decoration: _inputDecoration(field.readonly
             ? (field.helperText ?? '자동 입력됨')
-            : (field.placeholder ?? 'YYYY-MM-DD')
-        ),
-        onTap: field.readonly ? null : () => _pickRecipientDate(field, controller),
+            : (field.placeholder ?? 'YYYY-MM-DD')),
+        onTap:
+            field.readonly ? null : () => _pickRecipientDate(field, controller),
       );
     } else if (type == 'textarea') {
-      final controller = _recipientControllers.putIfAbsent(field.id, () => TextEditingController(text: _recipientFormValues[field.id]?.toString() ?? ''));
+      final controller = _recipientControllers.putIfAbsent(
+          field.id,
+          () => TextEditingController(
+              text: _recipientFormValues[field.id]?.toString() ?? ''));
       input = TextField(
         controller: controller,
         minLines: 4,
         maxLines: 6,
         enabled: !field.readonly,
         decoration: _inputDecoration(field.placeholder ?? ''),
-        onChanged: field.readonly ? null : (value) {
-          setState(() {
-            _recipientFormValues[field.id] = value;
-            _recipientFormTouched = true;
-          });
-        },
+        onChanged: field.readonly
+            ? null
+            : (value) {
+                setState(() {
+                  _recipientFormValues[field.id] = value;
+                  _recipientFormTouched = true;
+                });
+              },
       );
     } else if (type == 'phone') {
-      final controller =
-          _recipientControllers.putIfAbsent(field.id, () => TextEditingController(text: _recipientFormValues[field.id]?.toString() ?? ''));
+      final controller = _recipientControllers.putIfAbsent(
+          field.id,
+          () => TextEditingController(
+              text: _recipientFormValues[field.id]?.toString() ?? ''));
       input = TextField(
         controller: controller,
         keyboardType: TextInputType.phone,
-        inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9+\- ]'))],
+        inputFormatters: [
+          FilteringTextInputFormatter.allow(RegExp(r'[0-9+\- ]'))
+        ],
         enabled: !field.readonly,
         decoration: _inputDecoration(field.placeholder ?? ''),
-        onChanged: field.readonly ? null : (value) {
-          var formatted = _formatKoreanPhoneNumber(value);
-          if (formatted != value) {
-            controller.value = TextEditingValue(
-              text: formatted,
-              selection: TextSelection.collapsed(offset: formatted.length),
-            );
-          }
-          if (formatted.isEmpty) {
-            formatted = '';
-          }
-          setState(() {
-            if (formatted.isEmpty) {
-              _recipientFormValues.remove(field.id);
-            } else {
-              _recipientFormValues[field.id] = formatted;
-            }
-            _recipientFormTouched = true;
-          });
-        },
+        onChanged: field.readonly
+            ? null
+            : (value) {
+                var formatted = _formatKoreanPhoneNumber(value);
+                if (formatted != value) {
+                  controller.value = TextEditingValue(
+                    text: formatted,
+                    selection:
+                        TextSelection.collapsed(offset: formatted.length),
+                  );
+                }
+                if (formatted.isEmpty) {
+                  formatted = '';
+                }
+                setState(() {
+                  if (formatted.isEmpty) {
+                    _recipientFormValues.remove(field.id);
+                  } else {
+                    _recipientFormValues[field.id] = formatted;
+                  }
+                  _recipientFormTouched = true;
+                });
+              },
       );
     } else {
-      final controller = _recipientControllers.putIfAbsent(field.id, () => TextEditingController(text: _recipientFormValues[field.id]?.toString() ?? ''));
+      final controller = _recipientControllers.putIfAbsent(
+          field.id,
+          () => TextEditingController(
+              text: _recipientFormValues[field.id]?.toString() ?? ''));
       TextInputType keyboardType = TextInputType.text;
       List<TextInputFormatter>? formatters;
       if (type == 'number') {
-        keyboardType = const TextInputType.numberWithOptions(signed: true, decimal: true);
+        keyboardType =
+            const TextInputType.numberWithOptions(signed: true, decimal: true);
         formatters = [FilteringTextInputFormatter.allow(RegExp(r'[0-9.-]'))];
       } else if (type == 'currency') {
         keyboardType = const TextInputType.numberWithOptions(decimal: true);
@@ -1890,12 +2233,14 @@ class _ContractSignScreenState extends State<ContractSignScreen> {
         inputFormatters: formatters,
         enabled: !field.readonly,
         decoration: _inputDecoration(field.placeholder ?? ''),
-        onChanged: field.readonly ? null : (value) {
-          setState(() {
-            _recipientFormValues[field.id] = value;
-            _recipientFormTouched = true;
-          });
-        },
+        onChanged: field.readonly
+            ? null
+            : (value) {
+                setState(() {
+                  _recipientFormValues[field.id] = value;
+                  _recipientFormTouched = true;
+                });
+              },
       );
     }
 
@@ -1906,33 +2251,51 @@ class _ContractSignScreenState extends State<ContractSignScreen> {
           children: [
             Text(
               displayLabel,
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF374151)),
+              style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF374151)),
             ),
             if (field.required)
               const Padding(
                 padding: EdgeInsets.only(left: 6),
-                child: Text('필수', style: TextStyle(fontSize: 11, color: primaryColor, fontWeight: FontWeight.w600)),
+                child: Text('필수',
+                    style: TextStyle(
+                        fontSize: 11,
+                        color: primaryColor,
+                        fontWeight: FontWeight.w600)),
               ),
           ],
         ),
         if (helperText != null && helperText.isNotEmpty)
           Padding(
             padding: const EdgeInsets.only(top: 4),
-            child: Text(helperText, style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+            child: Text(helperText,
+                style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
           ),
         const SizedBox(height: 8),
         input,
         if (error != null)
           Padding(
             padding: const EdgeInsets.only(top: 4),
-            child: Text(error, style: const TextStyle(fontSize: 12, color: Color(0xFFDC2626))),
+            child: Text(error,
+                style: const TextStyle(fontSize: 12, color: Color(0xFFDC2626))),
           ),
       ],
     );
   }
 
+  void _setRecipientBooleanField(TemplateFieldDefinition field, bool value) {
+    setState(() {
+      _recipientFormValues[field.id] = value;
+      _recipientFormTouched = true;
+      _recipientFormErrors.remove(field.id);
+    });
+  }
+
   Widget _buildRecipientResidentField(TemplateFieldDefinition field) {
-    final controller = _recipientControllers.putIfAbsent(field.id, () => TextEditingController());
+    final controller = _recipientControllers.putIfAbsent(
+        field.id, () => TextEditingController());
     final storedValue = _recipientFormValues[field.id]?.toString();
     if (storedValue != null && storedValue.isNotEmpty) {
       final digits = _extractResidentDigits(storedValue);
@@ -1974,7 +2337,8 @@ class _ContractSignScreenState extends State<ContractSignScreen> {
     );
   }
 
-  Future<void> _pickRecipientDate(TemplateFieldDefinition field, TextEditingController controller) async {
+  Future<void> _pickRecipientDate(
+      TemplateFieldDefinition field, TextEditingController controller) async {
     final now = DateTime.now();
     final initial = _parseDateTime(controller.text) ?? now;
     final picked = await showDatePicker(
@@ -1995,8 +2359,9 @@ class _ContractSignScreenState extends State<ContractSignScreen> {
 
   Widget _buildSignatureCard(Contract contract) {
     final isActionDisabled = _isDeclined || _isCompleted || _isExpired;
-    final requiresFormCompletion =
-        _recipientSections.isNotEmpty && !_recipientFormCompleted && !isActionDisabled;
+    final requiresFormCompletion = _recipientSections.isNotEmpty &&
+        !_recipientFormCompleted &&
+        !isActionDisabled;
     final shareUrl = _signatureShareUrl(contract);
 
     return Container(
@@ -2005,7 +2370,11 @@ class _ContractSignScreenState extends State<ContractSignScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('서명 진행', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF111827))),
+          const Text('서명 진행',
+              style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF111827))),
           const SizedBox(height: 12),
           if (_signaturePreviewBytes != null)
             Container(
@@ -2019,7 +2388,8 @@ class _ContractSignScreenState extends State<ContractSignScreen> {
               alignment: Alignment.center,
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(12),
-                child: Image.memory(_signaturePreviewBytes!, fit: BoxFit.contain),
+                child:
+                    Image.memory(_signaturePreviewBytes!, fit: BoxFit.contain),
               ),
             )
           else if (_existingPerformerSignatureUrl != null &&
@@ -2035,7 +2405,8 @@ class _ContractSignScreenState extends State<ContractSignScreen> {
               alignment: Alignment.center,
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(12),
-                child: _buildSignatureDisplayImage(_existingPerformerSignatureUrl!),
+                child: _buildSignatureDisplayImage(
+                    _existingPerformerSignatureUrl!),
               ),
             )
           else
@@ -2048,7 +2419,8 @@ class _ContractSignScreenState extends State<ContractSignScreen> {
                 border: Border.all(color: const Color(0xFFE2E8F0)),
               ),
               alignment: Alignment.center,
-              child: const Text('아직 서명이 작성되지 않았습니다.', style: TextStyle(color: Color(0xFF94A3B8))),
+              child: const Text('아직 서명이 작성되지 않았습니다.',
+                  style: TextStyle(color: Color(0xFF94A3B8))),
             ),
           const SizedBox(height: 16),
           if (!isActionDisabled) ...[
@@ -2059,7 +2431,8 @@ class _ContractSignScreenState extends State<ContractSignScreen> {
                     onPressed: _openSignatureSheet,
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16)),
                     ),
                     child: const Text('서명 작성하기'),
                   ),
@@ -2069,7 +2442,8 @@ class _ContractSignScreenState extends State<ContractSignScreen> {
                   IconButton(
                     onPressed: _clearSignature,
                     tooltip: '서명 지우기',
-                    icon: const Icon(Icons.delete_outline, color: Color(0xFFDC2626)),
+                    icon: const Icon(Icons.delete_outline,
+                        color: Color(0xFFDC2626)),
                   ),
               ],
             ),
@@ -2085,15 +2459,19 @@ class _ContractSignScreenState extends State<ContractSignScreen> {
                       backgroundColor: primaryColor,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(18)),
                     ),
                     child: _signatureSubmitting
                         ? const SizedBox(
                             height: 20,
                             width: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2, color: Colors.white),
                           )
-                        : const Text('서명 제출', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                        : const Text('서명 제출',
+                            style: TextStyle(
+                                fontSize: 15, fontWeight: FontWeight.w600)),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -2104,13 +2482,15 @@ class _ContractSignScreenState extends State<ContractSignScreen> {
                       foregroundColor: const Color(0xFFDC2626),
                       side: const BorderSide(color: Color(0xFFDC2626)),
                       padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16)),
                     ),
                     child: _declineSubmitting
                         ? const SizedBox(
                             height: 18,
                             width: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFDC2626)),
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2, color: Color(0xFFDC2626)),
                           )
                         : const Text('서명 거절'),
                   ),
@@ -2132,8 +2512,7 @@ class _ContractSignScreenState extends State<ContractSignScreen> {
                 ],
               ),
             ],
-          ]
-          else
+          ] else
             const Text(
               '이미 서명이 완료되었거나 절차가 종료된 계약입니다.',
               style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
@@ -2158,7 +2537,11 @@ class _ContractSignScreenState extends State<ContractSignScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('계약서 본문', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF111827))),
+          const Text('계약서 본문',
+              style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF111827))),
           const SizedBox(height: 12),
           Container(
             width: double.infinity,
@@ -2171,7 +2554,8 @@ class _ContractSignScreenState extends State<ContractSignScreen> {
             child: HtmlWidget(
               html,
               renderMode: RenderMode.column,
-              textStyle: const TextStyle(fontSize: 14, height: 1.6, color: Color(0xFF1F2937)),
+              textStyle: const TextStyle(
+                  fontSize: 14, height: 1.6, color: Color(0xFF1F2937)),
               customStylesBuilder: _htmlStylesBuilder,
             ),
           ),
@@ -2182,7 +2566,8 @@ class _ContractSignScreenState extends State<ContractSignScreen> {
                 ? const SizedBox(
                     height: 18,
                     width: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: primaryColor),
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: primaryColor),
                   )
                 : const Icon(Icons.picture_as_pdf),
             label: Text(
@@ -2218,14 +2603,17 @@ class _ContractSignScreenState extends State<ContractSignScreen> {
     final shareUrl = _signatureShareUrl(contract);
     if (shareUrl == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('공유 가능한 서명 링크가 없습니다.'), duration: Duration(seconds: 3)),
+        const SnackBar(
+            content: Text('공유 가능한 서명 링크가 없습니다.'),
+            duration: Duration(seconds: 3)),
       );
       return;
     }
     await Clipboard.setData(ClipboardData(text: shareUrl));
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('서명 링크를 복사했습니다.'), duration: Duration(seconds: 3)),
+      const SnackBar(
+          content: Text('서명 링크를 복사했습니다.'), duration: Duration(seconds: 3)),
     );
   }
 
@@ -2251,7 +2639,8 @@ class _ContractSignScreenState extends State<ContractSignScreen> {
       color: Colors.white,
       borderRadius: BorderRadius.circular(28),
       boxShadow: const [
-        BoxShadow(color: Color(0x14111827), blurRadius: 18, offset: Offset(0, 8)),
+        BoxShadow(
+            color: Color(0x14111827), blurRadius: 18, offset: Offset(0, 8)),
       ],
     );
   }
@@ -2261,7 +2650,8 @@ class _ContractSignScreenState extends State<ContractSignScreen> {
       color: Colors.white,
       borderRadius: BorderRadius.circular(24),
       boxShadow: const [
-        BoxShadow(color: Color(0x14111827), blurRadius: 14, offset: Offset(0, 6)),
+        BoxShadow(
+            color: Color(0x14111827), blurRadius: 14, offset: Offset(0, 6)),
       ],
     );
   }
@@ -2277,7 +2667,11 @@ class _ContractSignScreenState extends State<ContractSignScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF374151))),
+        Text(label,
+            style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF374151))),
         const SizedBox(height: 8),
         TextField(
           controller: controller,
@@ -2377,7 +2771,8 @@ class _StatusChip extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: foreground),
+        style: TextStyle(
+            fontSize: 12, fontWeight: FontWeight.w600, color: foreground),
       ),
     );
   }
@@ -2425,12 +2820,15 @@ class _TimelineTile extends StatelessWidget {
                   color: completed ? primaryColor : const Color(0xFF475569),
                 ),
               ),
-              if (timestamp != null && timestamp!.isNotEmpty && timestamp != '-')
+              if (timestamp != null &&
+                  timestamp!.isNotEmpty &&
+                  timestamp != '-')
                 Padding(
                   padding: const EdgeInsets.only(top: 4),
                   child: Text(
                     timestamp!,
-                    style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
+                    style:
+                        const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
                   ),
                 ),
             ],
@@ -2472,13 +2870,17 @@ class _InfoRow extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(fontSize: 13, color: Color(0xFF64748B))),
+          Text(label,
+              style: const TextStyle(fontSize: 13, color: Color(0xFF64748B))),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
               value,
               textAlign: TextAlign.right,
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF111827)),
+              style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF111827)),
             ),
           ),
         ],

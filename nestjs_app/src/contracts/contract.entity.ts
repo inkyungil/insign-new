@@ -133,4 +133,23 @@ export class Contract {
 
   @OneToMany(() => ContractMailLog, (mailLog) => mailLog.contract)
   mailLogs!: ContractMailLog[];
+
+  // 블록체인 관련 필드
+  @Column({ name: 'blockchain_hash', type: 'varchar', length: 64, nullable: true })
+  blockchainHash!: string | null;
+
+  @Column({ name: 'blockchain_tx_hash', type: 'varchar', length: 66, nullable: true })
+  blockchainTxHash!: string | null;
+
+  @Column({ name: 'blockchain_timestamp', type: 'datetime', nullable: true })
+  blockchainTimestamp!: Date | null;
+
+  @Column({ name: 'blockchain_network', type: 'varchar', length: 20, nullable: true })
+  blockchainNetwork!: string | null;
+
+  @Column({ name: 'pdf_file_path', type: 'varchar', length: 255, nullable: true })
+  pdfFilePath!: string | null;
+
+  @Column({ name: 'pdf_hash', type: 'varchar', length: 64, nullable: true })
+  pdfHash!: string | null;
 }

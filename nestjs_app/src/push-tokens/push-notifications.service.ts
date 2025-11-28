@@ -11,6 +11,14 @@ interface InboxNotificationPayload {
   kind: string;
 }
 
+interface ContractNotificationPayload {
+  userId: number;
+  title: string;
+  body: string;
+  contractId: number;
+  contractName: string;
+}
+
 @Injectable()
 export class PushNotificationsService {
   private readonly logger = new Logger(PushNotificationsService.name);
@@ -47,6 +55,109 @@ export class PushNotificationsService {
     } catch (error) {
       this.logger.error(`FCM 초기화 실패: ${error}`);
     }
+  }
+
+  async sendContractCompletedNotification(payload: ContractNotificationPayload) {
+    if (!this.initialized) {
+      this.logger.debug('FCM이 초기화되지 않았습니다. 푸시 전송을 건너뜁니다.');
+      return;
+    }
+
+    const tokens = await this.pushTokensService.findTokensByUserIds([
+      payload.userId,
+    ]);
+
+    if (!tokens.length) {
+      this.logger.debug('등록된 FCM 토큰이 없습니다.');
+      return;
+    }
+
+    const trimmedBody =
+      payload.body.length > 128
+        ? `${payload.body.slice(0, 125)}...`
+        : payload.body;
+
+    const authClient = await this.googleAuth.getClient();
+    const projectId =
+      this.configuredProjectId ?? (await this.googleAuth.getProjectId());
+
+    if (!projectId) {
+      this.logger.error('FCM 프로젝트 ID를 확인할 수 없습니다.');
+      return;
+    }
+
+    const url = `https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`;
+    const invalidTokens: string[] = [];
+    let successCount = 0;
+
+    const results = await Promise.allSettled(
+      tokens.map(async (token) => {
+        try {
+          await authClient.request({
+            url,
+            method: 'POST',
+            data: {
+              message: {
+                token: token.token,
+                notification: {
+                  title: payload.title,
+                  body: trimmedBody,
+                },
+                data: {
+                  type: 'contract_completed',
+                  contractId: payload.contractId.toString(),
+                  contractName: payload.contractName,
+                },
+                android: {
+                  priority: 'high',
+                  notification: {
+                    channelId: 'contract_updates',
+                    sound: 'default',
+                  },
+                },
+                apns: {
+                  payload: {
+                    aps: {
+                      sound: 'default',
+                      'content-available': 1,
+                    },
+                  },
+                },
+              },
+            },
+          });
+          successCount++;
+        } catch (error: any) {
+          const errorCode = error?.response?.data?.error?.status;
+          this.logger.warn(
+            `푸시 전송 실패 (token: ${token.token.slice(0, 20)}...): ${errorCode}`,
+          );
+
+          if (this.isUnrecoverableError(errorCode)) {
+            invalidTokens.push(token.token);
+          }
+
+          throw error;
+        }
+      }),
+    );
+
+    if (invalidTokens.length > 0) {
+      await this.pushTokensService.removeTokens(invalidTokens);
+      this.logger.log(`${invalidTokens.length}개의 유효하지 않은 토큰을 제거했습니다.`);
+    }
+
+    const failureCount = results.filter((r) => r.status === 'rejected').length;
+
+    this.logger.log(
+      `계약서 완료 푸시 전송: 성공 ${successCount}, 실패 ${failureCount}`,
+    );
+
+    return {
+      success: successCount > 0,
+      sent: successCount,
+      failed: failureCount,
+    };
   }
 
   async sendInboxNotification(payload: InboxNotificationPayload) {

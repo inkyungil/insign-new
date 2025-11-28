@@ -69,6 +69,15 @@ export class AdminController {
     return { message: "관리자가 추가되었습니다." };
   }
 
+  @Get(":adminId/json")
+  async getAdmin(@Param("adminId", ParseIntPipe) adminId: number) {
+    const admin = await this.adminService.findAdminById(adminId);
+    return {
+      id: admin.id,
+      username: admin.username,
+    };
+  }
+
   @Post("update/:adminId")
   async updateAdmin(
     @Param("adminId", ParseIntPipe) adminId: number,

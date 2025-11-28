@@ -138,12 +138,26 @@ export class EncryptionService {
     if (!encryptedData) {
       return null;
     }
+
     const decrypted = this.decrypt(encryptedData);
+    if (typeof decrypted !== "string") {
+      this.logger.warn("Decrypted payload is not a string. Returning null.");
+      return null;
+    }
+
+    const trimmed = decrypted.trim();
+    if (!trimmed) {
+      return null;
+    }
+
     try {
-      return JSON.parse(decrypted);
+      return JSON.parse(trimmed);
     } catch (error) {
-      this.logger.error("Failed to parse decrypted JSON", error);
-      throw new Error("복호화된 데이터를 파싱할 수 없습니다.");
+      // 기록만 남기고 원본 문자열을 반환하면 이후 로직에서 적절히 처리할 수 있다.
+      this.logger.warn(
+        `Failed to parse decrypted JSON. Returning raw payload. reason=${(error as Error).message}`,
+      );
+      return trimmed as T;
     }
   }
 }

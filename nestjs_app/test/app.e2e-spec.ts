@@ -25,4 +25,12 @@ describe("AppController (e2e)", () => {
     expect(response.status).toBe(200);
     expect(response.body.status).toBe("ok");
   });
+
+  it("/app/update-info (GET)", async () => {
+    const response = await request(app.getHttpServer()).get("/app/update-info");
+
+    expect(response.status).toBe(200);
+    expect(response.body).toHaveProperty("android");
+    expect(response.body.android).toHaveProperty("minimumSupportedVersion");
+  });
 });

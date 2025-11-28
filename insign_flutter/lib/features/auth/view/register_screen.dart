@@ -38,6 +38,85 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
+  void _showEmailVerificationDialog(BuildContext context, String email) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.mail_outline, color: Colors.blue[700]),
+            const SizedBox(width: 8),
+            const Text('이메일 인증'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              '회원가입이 완료되었습니다!',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              '$email 주소로 인증 메일이 발송되었습니다.',
+              style: const TextStyle(fontSize: 14),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.blue[50],
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '📧 메일함을 확인해주세요',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    '• 이메일의 인증 링크를 클릭하세요\n• 스팸함도 확인해주세요\n• 인증 후 로그인이 가능합니다',
+                    style: TextStyle(fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              context.go('/auth/login');
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF4F46E5),
+              minimumSize: const Size(double.infinity, 48),
+            ),
+            child: const Text(
+              '확인',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _handleRegister(BuildContext context) async {
     final name = _nameController.text.trim();
     final email = _emailController.text.trim();
@@ -64,8 +143,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       if (!mounted) return;
 
       if (success) {
-        _showToast('회원가입이 완료되었습니다. 로그인 후 이용해주세요.');
-        context.go('/auth/login');
+        _showEmailVerificationDialog(context, email);
       } else {
         _showToast('회원가입에 실패했습니다.', isError: true);
       }

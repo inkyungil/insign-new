@@ -24,6 +24,11 @@ export class ContractResponseDto {
   signatureSource!: string | null;
   createdAt!: Date;
   updatedAt!: Date;
+  blockchainHash!: string | null;
+  blockchainTxHash!: string | null;
+  blockchainTimestamp!: Date | null;
+  blockchainNetwork!: string | null;
+  pdfHash!: string | null;
 
   static fromEntity(entity: Contract): ContractResponseDto {
     const dto = new ContractResponseDto();
@@ -52,6 +57,11 @@ export class ContractResponseDto {
     dto.signatureSource = entity.signatureSource;
     dto.createdAt = entity.createdAt;
     dto.updatedAt = entity.updatedAt;
+    dto.blockchainHash = entity.blockchainHash;
+    dto.blockchainTxHash = entity.blockchainTxHash;
+    dto.blockchainTimestamp = entity.blockchainTimestamp;
+    dto.blockchainNetwork = entity.blockchainNetwork;
+    dto.pdfHash = entity.pdfHash;
     return dto;
   }
 }

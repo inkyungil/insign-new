@@ -18,4 +18,9 @@ export class AppController {
   getHealth() {
     return this.appService.getHealth();
   }
+
+  @Get("app/update-info")
+  getAppUpdateInfo() {
+    return this.appService.getAppUpdateInfo();
+  }
 }

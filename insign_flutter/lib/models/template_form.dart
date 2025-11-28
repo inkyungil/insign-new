@@ -52,7 +52,7 @@ class TemplateFormSchema {
       final normalized = rawRole.trim().toLowerCase();
 
       if (normalized == 'all') {
-        return includeAll;
+        return true;
       }
 
       if (normalizedAllowed.contains(normalized)) {
@@ -173,7 +173,8 @@ class TemplateFieldDefinition {
           : const [],
       defaultValue: map['defaultValue'],
       validation: map['validation'] is Map<String, dynamic>
-          ? TemplateFieldValidation.fromMap(map['validation'] as Map<String, dynamic>)
+          ? TemplateFieldValidation.fromMap(
+              map['validation'] as Map<String, dynamic>)
           : null,
       readonly: map['readonly'] == true,
     );

@@ -3,10 +3,12 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:insign/core/constants.dart';
+import 'package:insign/data/auth_repository.dart';
 import 'package:insign/data/contract_repository.dart';
 import 'package:insign/data/services/session_service.dart';
 import 'package:insign/features/auth/cubit/auth_cubit.dart';
 import 'package:insign/models/contract.dart';
+import 'package:insign/models/user.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -17,6 +19,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final ContractRepository _contractRepository = ContractRepository();
+  final AuthRepository _authRepository = AuthRepository();
   final DateFormat _dateFormatter = DateFormat('yyyy.MM.dd');
 
   List<Contract> _contracts = const [];
@@ -24,10 +27,15 @@ class _HomeScreenState extends State<HomeScreen> {
   String? _errorMessage;
   DateTime? _lastBackPress;
 
+  // 구독 통계
+  User? _userStats;
+  bool _loadingStats = false;
+
   @override
   void initState() {
     super.initState();
     _loadContracts();
+    _loadUserStats();
   }
 
   Future<void> _loadContracts({bool isRefresh = false}) async {
@@ -60,6 +68,51 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  Future<void> _loadUserStats({bool isRefresh = false}) async {
+    if (!mounted) return;
+    setState(() {
+      if (!isRefresh) {
+        _loadingStats = true;
+      }
+    });
+
+    try {
+      final token = await SessionService.getAccessToken();
+      if (token == null) {
+        if (!mounted) return;
+        setState(() {
+          _loadingStats = false;
+        });
+        return;
+      }
+
+      final stats = await _authRepository.getUserStats(token);
+      if (!mounted) return;
+      setState(() {
+        _userStats = stats;
+      });
+
+      // TODO: AuthCubit에 updateUserStats 메서드 추가 필요
+      // final authCubit = context.read<AuthCubit>();
+      // authCubit.updateUserStats(stats);
+    } catch (error) {
+      // 통계 로딩 실패는 무시 (중요하지 않음)
+      debugPrint('사용자 통계 로딩 실패: $error');
+    } finally {
+      if (!mounted) return;
+      setState(() {
+        _loadingStats = false;
+      });
+    }
+  }
+
+  Future<void> _refreshAll() async {
+    await Future.wait([
+      _loadContracts(isRefresh: true),
+      _loadUserStats(isRefresh: true),
+    ]);
+  }
+
   Future<bool> _handleBackPressed() async {
     final now = DateTime.now();
     if (_lastBackPress == null || now.difference(_lastBackPress!) > const Duration(seconds: 2)) {
@@ -80,12 +133,15 @@ class _HomeScreenState extends State<HomeScreen> {
   List<_ContractStat> _buildStats() {
     final total = _contracts.length;
     final drafts = _contracts.where((c) => c.status == 'draft').length;
-    final declined = _contracts.where((c) => c.status == 'signature_declined').length;
-    final active = _contracts.where((c) => c.status != 'signature_declined').length;
+    final active = _contracts.where((c) => c.status == 'active').length;
+    final completed =
+        _contracts.where((c) => c.status == 'signature_completed').length;
+    final declined =
+        _contracts.where((c) => c.status == 'signature_declined').length;
 
     return [
-      _ContractStat(label: '전체 계약', value: total),
       _ContractStat(label: '진행 중', value: active),
+      _ContractStat(label: '서명 완료', value: completed),
       _ContractStat(label: '서명 거절', value: declined),
       _ContractStat(label: '작성 중', value: drafts),
     ];
@@ -173,22 +229,57 @@ class _HomeScreenState extends State<HomeScreen> {
         body: SafeArea(
           bottom: false,
           child: RefreshIndicator(
-            onRefresh: () => _loadContracts(isRefresh: true),
+            onRefresh: _refreshAll,
             color: primaryColor,
             child: CustomScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
               slivers: [
               SliverPadding(
-                padding: const EdgeInsets.fromLTRB(20, 36, 20, 0),
+                padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
+                sliver: SliverToBoxAdapter(
+                  child: Row(
+                    children: [
+                      const Text(
+                        '인싸인',
+                        style: TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF111827),
+                        ),
+                      ),
+                      const Spacer(),
+                      IconButton(
+                        onPressed: () => context.push('/inbox'),
+                        icon: const Icon(Icons.notifications_outlined),
+                        style: IconButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: primaryColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
                 sliver: SliverToBoxAdapter(
                   child: _HeaderCard(
                       displayName: displayName,
                       email: email,
                       subtitle: welcomeSubtitle,
-                    onNotificationTap: () => context.go('/inbox'),
                   ),
                 ),
               ),
+              // 구독 통계 위젯
+              if (user != null)
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                  sliver: SliverToBoxAdapter(
+                    child: _loadingStats
+                        ? const _LoadingCard(message: '사용량 정보를 불러오는 중입니다...')
+                        : _SubscriptionStatsCard(userStats: _userStats ?? user),
+                  ),
+                ),
               if (_errorMessage != null)
                 SliverPadding(
                   padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
@@ -253,13 +344,11 @@ class _HeaderCard extends StatelessWidget {
   final String displayName;
   final String? email;
   final String subtitle;
-  final VoidCallback onNotificationTap;
 
   const _HeaderCard({
     required this.displayName,
     required this.email,
     required this.subtitle,
-    required this.onNotificationTap,
   });
 
   @override
@@ -284,46 +373,27 @@ class _HeaderCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      '안녕하세요',
-                      style: TextStyle(color: Color(0xFFE0E7FF), fontSize: 14),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '$displayName님, 반갑습니다!',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 24,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    if (email != null)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 6),
-                        child: Text(
-                          email!,
-                          style: const TextStyle(color: Color(0xFFEEF2FF), fontSize: 13),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              IconButton(
-                onPressed: onNotificationTap,
-                icon: const Icon(Icons.notifications_none, color: Colors.white),
-                style: IconButton.styleFrom(
-                  backgroundColor: Colors.white.withOpacity(0.18),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                ),
-              ),
-            ],
+          const Text(
+            '안녕하세요',
+            style: TextStyle(color: Color(0xFFE0E7FF), fontSize: 14),
           ),
+          const SizedBox(height: 4),
+          Text(
+            '$displayName님, 반갑습니다!',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 24,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          if (email != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text(
+                email!,
+                style: const TextStyle(color: Color(0xFFEEF2FF), fontSize: 13),
+              ),
+            ),
           const SizedBox(height: 16),
           Text(
             subtitle,
@@ -683,4 +753,200 @@ class _ContractStat {
   final int value;
 
   const _ContractStat({required this.label, required this.value});
+}
+
+class _SubscriptionStatsCard extends StatelessWidget {
+  final User userStats;
+
+  const _SubscriptionStatsCard({required this.userStats});
+
+  @override
+  Widget build(BuildContext context) {
+    final isPremium = userStats.isPremium;
+    final contractsUsed = userStats.contractsUsedThisMonth;
+    final contractsLimit = userStats.monthlyContractLimit;
+    final points = userStats.points;
+    final remaining = userStats.remainingFreeContracts;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: const Color(0x1F4F46E5)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0A000000),
+            blurRadius: 10,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: isPremium ? const Color(0xFFDCFCE7) : const Color(0xFFDEEBFF),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      isPremium ? Icons.star : Icons.account_circle_outlined,
+                      size: 16,
+                      color: isPremium ? const Color(0xFF16A34A) : primaryColor,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      isPremium ? '프리미엄 플랜' : '무료 플랜',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: isPremium ? const Color(0xFF16A34A) : primaryColor,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Spacer(),
+              Icon(
+                Icons.emoji_events_outlined,
+                size: 20,
+                color: points >= 10 ? const Color(0xFFFBBF24) : const Color(0xFF9CA3AF),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                '$points P',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: points >= 10 ? const Color(0xFFF59E0B) : const Color(0xFF6B7280),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              Expanded(
+                child: _StatItem(
+                  label: '이번 달 사용',
+                  value: '$contractsUsed',
+                  unit: isPremium ? '' : '/$contractsLimit개',
+                  icon: Icons.description_outlined,
+                  color: primaryColor,
+                ),
+              ),
+              Container(
+                width: 1,
+                height: 40,
+                color: const Color(0xFFE5E7EB),
+              ),
+              Expanded(
+                child: _StatItem(
+                  label: '남은 무료',
+                  value: isPremium ? '무제한' : '$remaining개',
+                  unit: '',
+                  icon: Icons.check_circle_outline,
+                  color: const Color(0xFF10B981),
+                ),
+              ),
+            ],
+          ),
+          if (!isPremium && contractsUsed >= contractsLimit) ...[
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFF7ED),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.info_outline, color: Color(0xFFF97316), size: 18),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      points >= 3
+                          ? '포인트 3개로 계약서 1개 더 작성 가능해요'
+                          : '출석 체크로 포인트를 모아보세요!',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFFEA580C),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _StatItem extends StatelessWidget {
+  final String label;
+  final String value;
+  final String unit;
+  final IconData icon;
+  final Color color;
+
+  const _StatItem({
+    required this.label,
+    required this.value,
+    required this.unit,
+    required this.icon,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Icon(icon, size: 24, color: color),
+        const SizedBox(height: 8),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 12,
+            color: Color(0xFF6B7280),
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.baseline,
+          textBaseline: TextBaseline.alphabetic,
+          children: [
+            Text(
+              value,
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF111827),
+              ),
+            ),
+            if (unit.isNotEmpty)
+              Text(
+                unit,
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: Color(0xFF6B7280),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+          ],
+        ),
+      ],
+    );
+  }
 }

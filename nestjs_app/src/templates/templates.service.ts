@@ -34,11 +34,45 @@ export class TemplatesService {
           "정규직 및 기간제 근로자와 체결할 때 필요한 핵심 조항(근로조건, 임금, 휴가, 4대보험)을 포함한 표준 근로계약서 양식입니다.",
         content: `
 
-<div class="contract-page" style="width:794px;margin:0 auto;font-family:'Pretendard','Noto Sans KR',sans-serif;color:#1b2733;font-size:13px;line-height:1.65;">
+<div class="contract-page" style="width:794px;margin:0 auto;font-family:'Pretendard','Noto Sans KR',sans-serif;color:#1b2733;font-size:13px;line-height:1.75;background:#fdfdfd;border:1px solid #e0e6ef;border-radius:18px;box-shadow:0 8px 30px rgba(15,37,64,0.08);">
   <style>
+    .contract-page * {
+      box-sizing: border-box;
+    }
+    .badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 999px;
+      background: linear-gradient(120deg,#1f4fa0,#5c8dff);
+      color: #fff;
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      margin-bottom: 8px;
+    }
+    .section-title {
+      font-size: 15px;
+      color: #0b3954;
+      margin: 22px 0 12px;
+      border-left: 4px solid #0b3954;
+      padding-left: 10px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+    .note-box,
+    .highlight-box {
+      border-radius: 14px;
+      padding: 16px 18px;
+      margin: 12px 0;
+      border: 1px solid rgba(11,57,84,0.1);
+      background: #f7faff;
+    }
+    .highlight-box {
+      background: #fff7e6;
+      border-color: #ffe2a4;
+    }
     .field-blank {
       display: inline-block;
-      min-width: 160px;
+      min-width: 150px;
       padding: 0 12px;
       border-bottom: 1px solid #1b2733;
       text-align: center;
@@ -47,79 +81,179 @@ export class TemplatesService {
     .field-blank.small {
       min-width: 120px;
     }
-    .section-title {
-      font-size: 15px;
-      color: #0b3954;
-      margin: 16px 0 10px;
-      border-left: 4px solid #0b3954;
-      padding-left: 8px;
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
     }
-    .clause {
-      margin-bottom: 10px;
+    .info-card {
+      border: 1px solid #dce3ef;
+      border-radius: 16px;
+      padding: 16px 18px;
+      background: #fff;
+      box-shadow: inset 0 2px 8px rgba(15,37,64,0.04);
+    }
+    .info-card h3 {
+      margin: 0 0 8px;
+      font-size: 14px;
+      color: #0b3954;
+      letter-spacing: 0.05em;
+    }
+    .info-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      line-height: 1.7;
+    }
+    .info-list li + li {
+      margin-top: 4px;
+    }
+    .clause-box {
+      padding: 14px 16px;
+      border-radius: 14px;
+      border: 1px solid #e3e8f2;
+      background: #fdfefe;
+      margin-bottom: 12px;
+    }
+    .clause-box strong {
+      color: #0b3954;
     }
     .sign-table {
       width: 100%;
-      border-collapse: collapse;
-      border: 1px solid #aeb8ca;
-      margin-bottom: 12px;
+      border-collapse: separate;
+      border-spacing: 0;
+      margin-top: 18px;
+      border: 1px solid #d0dae8;
+      border-radius: 16px;
+      overflow: hidden;
     }
     .sign-table th,
     .sign-table td {
-      border: 1px solid #aeb8ca;
-      padding: 8px;
+      border-bottom: 1px solid #e3e8f2;
+      padding: 16px 18px;
+      vertical-align: top;
+      line-height: 1.8;
+    }
+    .sign-table tr:last-child th,
+    .sign-table tr:last-child td {
+      border-bottom: none;
     }
     .sign-table th {
-      width: 22%;
-      background: #f3f5f9;
-      text-align: left;
+      width: 28%;
+      background: #f4f6fb;
+      font-weight: 700;
+      color: #0b3954;
     }
   </style>
 
-  <header style="text-align:center;padding:18px 10px 12px;border-bottom:3px solid #0b3954;">
-    <h1 style="margin:0;font-size:28px;letter-spacing:0.14em;color:#0b3954;">표준근로계약서</h1>
-    <p style="margin:6px 0 0;font-size:13px;color:#5c6b7a;">스카이코워커와 함께 하게 된 것을 진심으로 환영합니다</p>
+  <header style="text-align:center;padding:30px 10px 20px;border-bottom:3px solid #0b3954;background:linear-gradient(135deg,#f7faff 0%,#ffffff 55%,#f2f4fb 100%);border-radius:18px 18px 0 0;">
+    <div class="badge">근로 계약</div>
+    <h1 style="margin:0;font-size:30px;letter-spacing:0.16em;color:#0b3954;">표준근로계약서</h1>
+    <p style="margin:8px 0 4px;font-size:13px;color:#5c6b7a;">상호 존중과 투명한 근로조건 공유를 위한 공식 문서</p>
+    <p style="margin:0;font-size:12px;color:#7c8895;">고용노동부 표준 서식 기반 · 전자 서명용 커스텀 디자인</p>
   </header>
 
-  <section style="padding:18px 10px 0;">
-    <p class="clause"><span class="field-blank">{{employerName}}</span> (이하 “갑”이라 함)과(와) <span class="field-blank">{{employeeName}}</span> (이하 “을”이라 함)은 다음과 같이 근로계약을 체결한다.</p>
+  <section style="padding:22px 24px 0;">
+    <div class="note-box">
+      <strong style="display:block;font-size:13px;color:#0b3954;margin-bottom:6px;">[공지] 필독 안내</strong>
+      <p style="margin:0;font-size:12.5px;color:#4b5867;">
+        본 계약서는 <strong>근로기준법</strong> 및 관계 법령을 준수하며, 갑({{employerName}})과 을({{employeeName}})의 합의하에 체결됩니다.
+        근로조건의 변경이 필요한 경우 양 당사자는 사전에 서면으로 협의합니다.
+      </p>
+    </div>
 
-    <div class="clause"><strong>1. 근로계약기간 :</strong> <span class="field-blank small">{{employmentStartDate}}</span> 부터 <span class="field-blank small">{{employmentEndDate}}</span> 까지<br /><span style="font-size:12px;color:#586674;">※ 근로계약기간을 정하지 않는 경우에는 근로개시일만 기재하며, 근로종료일 1개월 전 상호 통보가 없으면 1년 단위로 자동 연장됩니다.</span></div>
-    <div class="clause"><strong>2. 근무 장소(사업장주소) :</strong> <span class="field-blank">{{workplaceLocation}}</span></div>
-    <div class="clause"><strong>3. 업무의 내용 :</strong> <span class="field-blank">{{jobDescription}}</span></div>
-    <div class="clause"><strong>4. 소정근로시간 :</strong> <span class="field-blank small">{{dailyWorkHours}}</span> (휴게시간 <span class="field-blank small">{{restTime}}</span>)</div>
-    <div class="clause"><strong>5. 근무일/휴일 :</strong> 근무 <span class="field-blank small">{{weeklyWorkDays}}</span> / 주휴일 <span class="field-blank small">{{weeklyHoliday}}</span></div>
-    <div class="clause"><strong>6. 임금 :</strong> <span class="field-blank small">{{wageType}}</span> <span class="field-blank small">{{wageAmount}}</span> 원<br /><span style="font-size:12px;color:#586674;">※ 수당 {{allowances}}, 상여금 {{bonusPolicy}}, 퇴직금 {{severancePay}} 포함</span></div>
-    <div class="clause"><strong>7. 급여 지급일 :</strong> <span class="field-blank small">{{wagePaymentDate}}</span><br /><span style="font-size:12px;color:#586674;">※ 상기 급여는 12개월로 나누어 매월 해당 지급일에 지급합니다.</span></div>
-    <div class="clause"><strong>8. 수습기간 :</strong> 수습 <span class="field-blank small">{{probationMonths}}</span>개월, 수습 중 급여 <span class="field-blank small">{{probationWagePercent}}</span>% 지급. 적격성 미달 시 계약 해지 가능.</div>
-    <div class="clause"><strong>9. 4대보험 :</strong> 국민연금 {{nationalPensionStatus}} / 건강보험 {{healthInsuranceStatus}} / 고용보험 {{employmentInsuranceStatus}} / 산재보험 {{industrialAccidentInsuranceStatus}}<br /><span style="font-size:12px;color:#586674;">※ 법에 의한 근로자 부담분은 근로자가 부담합니다.</span></div>
-    <div class="clause"><strong>10. 연차유급휴가 :</strong> {{annualLeaveDays}}일 (근로기준법 및 관련 법령에 따름)</div>
-    <div class="clause"><strong>11. 근로계약서 교부 :</strong> “갑”은 근로계약 체결과 동시에 본 계약서를 사본하여 “을”에게 교부한다. (근로기준법 제17조)</div>
-    <div class="clause"><strong>12. 을의 의무 :</strong><br />① 업무상의 과오 발생 시 즉시 상사에게 보고하고 지시에 따른다.<br />② 계약 중 알게 된 “갑”의 영업비밀 및 기밀을 계약 종료 후에도 유출하거나 이용하지 않는다.<br />③ 본인 또는 타인의 급여 정보를 제3자에게 누설하지 않는다.<br />④ 고의 또는 중대한 과실로 “갑”에게 손해를 끼친 경우 이를 배상한다.<br />⑤ 중도 퇴직 시 최소 1개월 전에 통보하고 인수인계를 완료한다.<br />⑥ 퇴직급여는 퇴직연금(DC형)에 가입하여 지급한다.</div>
-    <div class="clause"><strong>13. 기타 :</strong> 이 계약에 정함이 없는 사항은 근로기준법 등 노동관계법령에 따른다.</div>
-    <div class="clause"><strong>14. 개인정보 이용·제공·활용 동의 :</strong> 개인정보는 4대보험 신고, 임금 대장 작성, 세무 신고 목적에 한해 사용하며, 「개인정보보호법」에 따라 관리한다. 본 동의는 {{employerName}}이(가) 보유·활용하는 것에 대한 동의이다.</div>
+    <p style="margin:14px 0 18px;line-height:1.8;">
+      <span class="field-blank">{{employerName}}</span> (이하 “갑”)과(와) <span class="field-blank">{{employeeName}}</span> (이하 “을”)은
+      상호 신뢰와 성실을 바탕으로 다음과 같이 근로계약을 체결한다.
+    </p>
+
+    <div class="section-title">제1조 (계약 당사자 정보)</div>
+    <div class="info-grid">
+      <div class="info-card">
+        <h3>갑 (사용자)</h3>
+        <ul class="info-list">
+          <li>사업체명 : {{employerName}}</li>
+          <li>대표자 : {{employerRepresentative}}</li>
+          <li>주소 : {{employerAddress}}</li>
+          <li>연락처 : {{employerContact}}</li>
+          <li>사업자등록번호 : {{businessRegistrationNumber}}</li>
+        </ul>
+      </div>
+      <div class="info-card">
+        <h3>을 (근로자)</h3>
+        <ul class="info-list">
+          <li>성명 : {{employeeName}}</li>
+          <li>주민등록번호 : {{employeeResidentId}}</li>
+          <li>주소 : {{employeeAddress}}</li>
+          <li>연락처 : {{employeeContact}}</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="section-title">제2조 (근로 조건)</div>
+    <div class="clause-box"><strong>1. 계약기간 :</strong> <span class="field-blank small">{{employmentStartDate}}</span> 부터 <span class="field-blank small">{{employmentEndDate}}</span> 까지<br /><span style="font-size:12px;color:#586674;">※ 기간의 정함이 없는 경우 근로개시일만 기재하며, 종료일 1개월 전 별도 통보가 없으면 연장됩니다.</span></div>
+    <div class="clause-box"><strong>2. 근무 장소 :</strong> <span class="field-blank">{{workplaceLocation}}</span></div>
+    <div class="clause-box"><strong>3. 담당 업무 :</strong> <span class="field-blank">{{jobDescription}}</span></div>
+    <div class="clause-box"><strong>4. 소정근로시간 :</strong> 1일 <span class="field-blank small">{{dailyWorkHours}}</span>, 휴게시간 <span class="field-blank small">{{restTime}}</span></div>
+    <div class="clause-box"><strong>5. 근무일/휴일 :</strong> 주간 근무일 <span class="field-blank small">{{weeklyWorkDays}}</span>일, 주휴일 <span class="field-blank small">{{weeklyHoliday}}</span></div>
+
+    <div class="section-title">제3조 (보상 및 복리후생)</div>
+    <div class="highlight-box">
+      <strong style="color:#b66a00;">임금 명세</strong><br />
+      <span style="font-size:13px;">
+        임금형태 <span class="field-blank small">{{wageType}}</span>, 금액 <span class="field-blank small">{{wageAmount}}</span> 원.<br />
+        수당 {{allowances}}, 상여금 {{bonusPolicy}}, 퇴직급여 {{severancePay}} 포함 여부를 명확히 기재합니다.
+      </span>
+    </div>
+    <div class="clause-box"><strong>1. 급여 지급일 :</strong> 매월 <span class="field-blank small">{{wagePaymentDate}}</span></div>
+    <div class="clause-box"><strong>2. 수습기간 :</strong> 수습 <span class="field-blank small">{{probationMonths}}</span>개월, 수습 중 임금 <span class="field-blank small">{{probationWagePercent}}</span>% 지급</div>
+    <div class="clause-box"><strong>3. 4대보험 가입 :</strong><br />국민연금 {{nationalPensionStatus}} / 건강보험 {{healthInsuranceStatus}} / 고용보험 {{employmentInsuranceStatus}} / 산재보험 {{industrialAccidentInsuranceStatus}}<br /><span style="font-size:12px;color:#586674;">※ 법령상 근로자 부담분은 을이 납부.</span></div>
+    <div class="clause-box"><strong>4. 연차유급휴가 :</strong> {{annualLeaveDays}}일, 관련 법령 및 회사 규정에 따름</div>
+
+    <div class="section-title">제4조 (근로자 의무 및 준수사항)</div>
+    <div class="clause-box">
+      ① 업무상 과오 발생 시 즉시 보고하고 지시를 따른다.<br />
+      ② 계약 기간 중 알게 된 갑의 영업비밀 및 기밀을 계약 종료 후에도 유출하지 않는다.<br />
+      ③ 본인 또는 타인의 임금 정보를 제3자에게 누설하지 않는다.<br />
+      ④ 고의 또는 중대한 과실로 손해 발생 시 배상 책임이 있다.<br />
+      ⑤ 중도 퇴사 시 최소 1개월 전 통보하고 인수인계를 완료한다.<br />
+      ⑥ 퇴직급여는 퇴직연금(DC형) 가입을 통해 지급한다.
+    </div>
+
+    <div class="section-title">제5조 (기타 조항 및 개인정보)</div>
+    <div class="clause-box">
+      본 계약에 정하지 않은 사항은 근로기준법 등 관계 법령과 회사 취업규칙에 따른다.
+    </div>
+    <div class="clause-box">
+      <strong>개인정보 이용·제공·활용 동의 :</strong><br />
+      개인정보는 4대보험 신고, 임금대장 작성, 세무 신고 목적에 한해 사용하며 「개인정보보호법」에 따라 관리한다.
+      본 동의는 {{employerName}}이(가) 보유·활용하는 것에 대한 동의이다.
+    </div>
   </section>
 
-  <section style="padding:18px 10px 0;">
-    <p style="margin:0 0 12px;text-align:right;">작성일 : <span class="field-blank small">{{contractDate}}</span></p>
+  <section style="padding:18px 24px 26px;">
+    <p style="margin:0 0 12px;text-align:right;">계약 체결일 : <span class="field-blank small">{{contractDate}}</span></p>
     <table class="sign-table">
       <tbody>
         <tr>
-          <th>(갑) 사업주</th>
-          <td style="line-height:1.8;">
+          <th>(갑) 사업주 서명</th>
+          <td>
             사업체명 : {{employerName}}<br />
             대표자 : {{employerRepresentative}}<br />
-            전화 : {{employerContact}}<br />
+            연락처 : {{employerContact}}<br />
             주소 : {{employerAddress}}<br />
-            서명 : {{employerSignature}} / 서명일 : {{employerSignDate}}
+            서명 : {{employerSignature}}<br />
+            서명일 : {{employerSignDate}}
           </td>
         </tr>
         <tr>
-          <th>(을) 근로자</th>
-          <td style="line-height:1.8;">
+          <th>(을) 근로자 서명</th>
+          <td>
             성명 : {{employeeName}}<br />
-            주민번호 : {{employeeResidentId}}<br />
+            주민등록번호 : {{employeeResidentId}}<br />
             주소 : {{employeeAddress}}<br />
-            서명 : {{employeeSignature}} / 서명일 : {{employeeSignDate}}
+            서명 : {{employeeSignature}}<br />
+            서명일 : {{employeeSignDate}}
           </td>
         </tr>
       </tbody>
@@ -568,7 +702,7 @@ export class TemplatesService {
         description:
           "신규 또는 재직 중 임직원이 영업비밀 보호 의무를 확인하고 주요 준수 조항에 서약할 때 사용하는 표준 양식입니다.",
         content: `
-<div class="contract-page" style="width:760px;margin:0 auto;font-family:'Pretendard','Noto Sans KR',sans-serif;color:#1b2733;font-size:13px;line-height:1.7;">
+<div class="contract-page" style="width:794px;margin:0 auto;font-family:'Pretendard','Noto Sans KR',sans-serif;color:#1b2733;font-size:13px;line-height:1.7;">
   <style>
     .field-blank {
       display: inline-block;
@@ -586,19 +720,21 @@ export class TemplatesService {
     .info-table th,
     .info-table td {
       border: 1px solid #d4d9e2;
-      padding: 8px 12px;
+      padding: 10px 12px;
     }
     .info-table th {
       width: 22%;
       background: #f3f5f9;
       text-align: left;
+      font-weight: 600;
     }
     .clause-list {
       margin: 0;
       padding-left: 20px;
     }
     .clause-list li {
-      margin-bottom: 10px;
+      margin-bottom: 12px;
+      line-height: 1.8;
     }
     .clause-sublist {
       margin-top: 8px;
@@ -819,29 +955,31 @@ export class TemplatesService {
         description:
           "금전 차용 시 원금·이자 조건과 연체, 관할 조항을 명시해 채권자와 채무자가 서명하는 표준 차용증 양식입니다.",
         content: `
-<div class="contract-page" style="width:760px;margin:0 auto;font-family:'Pretendard','Noto Sans KR',sans-serif;color:#1b2733;font-size:13px;line-height:1.7;">
+<div class="contract-page" style="width:794px;margin:0 auto;font-family:'Pretendard','Noto Sans KR',sans-serif;color:#1b2733;font-size:13px;line-height:1.7;">
   <style>
     .info-table {
       width: 100%;
       border-collapse: collapse;
-      margin: 20px 0 12px;
+      margin: 18px 0;
     }
     .info-table th,
     .info-table td {
       border: 1px solid #d4d9e2;
-      padding: 8px 12px;
+      padding: 10px 12px;
     }
     .info-table th {
       width: 20%;
       background: #f3f5f9;
       text-align: left;
+      font-weight: 600;
     }
     .clause-list {
       margin: 0 0 18px;
       padding-left: 20px;
     }
     .clause-list li {
-      margin-bottom: 10px;
+      margin-bottom: 12px;
+      line-height: 1.8;
     }
     .clause-sublist {
       margin-top: 6px;
@@ -854,7 +992,7 @@ export class TemplatesService {
     .signature-table {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 12px;
+      margin-top: 18px;
     }
     .signature-table th,
     .signature-table td {
@@ -866,28 +1004,7 @@ export class TemplatesService {
     .signature-table th {
       width: 22%;
       background: #f3f5f9;
-    }
-    .signature-table .signature-box {
-      display: block;
-      width: 100%;
-      margin: 6px 0 8px;
-    }
-    .signature-table .signature-box img,
-    .signature-table .signature-box canvas,
-    .signature-table .signature-box svg {
-      display: block;
-      width: 100% !important;
-      height: auto !important;
-    }
-    .signature-table .signature-label {
-      display: block;
       font-weight: 600;
-      margin-bottom: 2px;
-    }
-    .signature-table .signature-date {
-      display: block;
-      margin-top: 6px;
-      color: #4d5c6d;
     }
   </style>
   <header style="text-align:center;padding:18px 10px 14px;border-bottom:3px solid #0b3954;">
@@ -936,9 +1053,7 @@ export class TemplatesService {
             주소 : {{lenderAddress}}<br />
             주민/사업자등록번호 : {{lenderIdNumber}}<br />
             연락처 : {{lenderContact}}<br />
-            <span class="signature-label">서명 :</span>
-            <span class="signature-box">{{lenderSignature}}</span>
-            <span class="signature-date">서명일 : {{lenderSignDate}}</span>
+            서명 : {{lenderSignature}} / 서명일 : {{lenderSignDate}}
           </td>
         </tr>
         <tr>
@@ -948,9 +1063,7 @@ export class TemplatesService {
             주소 : {{borrowerAddress}}<br />
             주민/사업자등록번호 : {{borrowerIdNumber}}<br />
             연락처 : {{borrowerContact}}<br />
-            <span class="signature-label">서명 :</span>
-            <span class="signature-box">{{borrowerSignature}}</span>
-            <span class="signature-date">서명일 : {{borrowerSignDate}}</span>
+            서명 : {{borrowerSignature}} / 서명일 : {{borrowerSignDate}}
           </td>
         </tr>
       </tbody>

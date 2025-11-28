@@ -22,6 +22,11 @@ class Contract {
   final String? signatureSource;
   final DateTime? createdAt;
   final DateTime? updatedAt;
+  final String? blockchainHash;
+  final String? blockchainTxHash;
+  final DateTime? blockchainTimestamp;
+  final String? blockchainNetwork;
+  final String? pdfHash;
 
   const Contract({
     required this.id,
@@ -47,6 +52,11 @@ class Contract {
     this.signatureSource,
     this.createdAt,
     this.updatedAt,
+    this.blockchainHash,
+    this.blockchainTxHash,
+    this.blockchainTimestamp,
+    this.blockchainNetwork,
+    this.pdfHash,
   });
 
   factory Contract.fromJson(Map<String, dynamic> json) {
@@ -88,6 +98,11 @@ class Contract {
       signatureSource: json['signatureSource'] as String?,
       createdAt: _parseDate(json['createdAt']),
       updatedAt: _parseDate(json['updatedAt']),
+      blockchainHash: json['blockchainHash'] as String?,
+      blockchainTxHash: json['blockchainTxHash'] as String?,
+      blockchainTimestamp: _parseDate(json['blockchainTimestamp']),
+      blockchainNetwork: json['blockchainNetwork'] as String?,
+      pdfHash: json['pdfHash'] as String?,
     );
   }
 }

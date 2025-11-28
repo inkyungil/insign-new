@@ -17,6 +17,7 @@ import { ContractResponseDto } from "./dto/contract-response.dto";
 import { ContractTokenResponseDto } from "./dto/contract-token-response.dto";
 import { VerifyPerformerDto } from "./dto/verify-performer.dto";
 import { CompleteSignatureDto } from "./dto/complete-signature.dto";
+import { VerifyPdfDto } from "./dto/verify-pdf.dto";
 import { ContractPdfService } from "./contract-pdf.service";
 
 @Controller("api/contracts")
@@ -103,6 +104,16 @@ export class ContractsController {
     return ContractResponseDto.fromEntity(contract);
   }
 
+  @Post(":id/verify-pdf")
+  async verifyPdf(
+    @Headers("authorization") authorization: string | undefined,
+    @Param("id", ParseIntPipe) id: number,
+    @Body() dto: VerifyPdfDto,
+  ) {
+    const userId = await this.extractUserId(authorization);
+    return this.contractsService.verifyUploadedPdf(id, userId, dto);
+  }
+
   @Post(":id/resend")
   async resend(
     @Headers("authorization") authorization: string | undefined,
@@ -121,7 +132,16 @@ export class ContractsController {
   ) {
     const userId = await this.extractUserId(authorization);
     const contract = await this.contractsService.findOneById(id, userId);
-    const pdfBuffer = await this.contractPdfService.generate(contract);
+
+    // 저장된 PDF 파일을 먼저 시도
+    let pdfBuffer = await this.contractsService.getStoredPdfBuffer(contract);
+
+    // 저장된 파일이 없으면 새로 생성 (하위 호환성)
+    if (!pdfBuffer) {
+      console.warn(`계약 ID ${contract.id}: 저장된 PDF가 없어 새로 생성합니다.`);
+      pdfBuffer = await this.contractPdfService.generate(contract);
+    }
+
     this.setPdfHeaders(res, contract.name, contract.id);
     res.send(pdfBuffer);
   }
@@ -132,7 +152,16 @@ export class ContractsController {
     @Res() res: Response,
   ) {
     const contract = await this.contractsService.findBySignatureToken(token);
-    const pdfBuffer = await this.contractPdfService.generate(contract);
+
+    // 저장된 PDF 파일을 먼저 시도
+    let pdfBuffer = await this.contractsService.getStoredPdfBuffer(contract);
+
+    // 저장된 파일이 없으면 새로 생성 (하위 호환성)
+    if (!pdfBuffer) {
+      console.warn(`계약 ID ${contract.id}: 저장된 PDF가 없어 새로 생성합니다.`);
+      pdfBuffer = await this.contractPdfService.generate(contract);
+    }
+
     this.setPdfHeaders(res, contract.name, contract.id);
     res.send(pdfBuffer);
   }

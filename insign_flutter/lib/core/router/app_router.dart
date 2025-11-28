@@ -7,13 +7,17 @@ import 'package:insign/app.dart';
 import 'package:insign/features/auth/cubit/auth_cubit.dart';
 import 'package:insign/features/auth/view/login_screen.dart';
 import 'package:insign/features/auth/view/register_screen.dart';
+import 'package:insign/features/auth/view/verify_email_screen.dart';
+import 'package:insign/features/auth/view/terms_agreement_screen.dart';
+import 'package:insign/features/auth/view/terms_detail_screen.dart';
 import 'package:insign/features/home/view/home_screen.dart';
 import 'package:insign/features/contracts/view/contracts_screen.dart';
 import 'package:insign/features/contracts/view/create_contract_screen.dart';
 import 'package:insign/features/contracts/view/contract_detail_screen.dart';
 import 'package:insign/features/contracts/view/contract_sign_screen.dart';
-import 'package:insign/features/podcast/view/now_playing_screen.dart';
 import 'package:insign/features/templates/view/templates_screen.dart';
+import 'package:insign/features/events/view/check_in_screen.dart';
+import 'package:insign/features/events/view/events_screen.dart';
 import 'package:insign/features/profile/view/profile_screen.dart';
 import 'package:insign/features/profile/view/member_info_screen.dart';
 import 'package:insign/features/settings/view/settings_screen.dart';
@@ -51,6 +55,9 @@ final appRouter = GoRouter(
       '/splash',
       '/auth/login',
       '/auth/register',
+      '/auth/terms-agreement',
+      '/auth/terms-detail',
+      '/auth/verify-email',
       '/privacy-policy',
       '/terms-of-service',
       '/sign',
@@ -109,8 +116,15 @@ final appRouter = GoRouter(
           pageBuilder: (context, state) => const NoTransitionPage(child: TemplatesScreen()),
         ),
         GoRoute(
-          path: '/inbox',
-          pageBuilder: (context, state) => const NoTransitionPage(child: InboxScreen()),
+          path: '/events',
+          pageBuilder: (context, state) => const NoTransitionPage(child: EventsScreen()),
+          routes: [
+            GoRoute(
+              path: 'check-in',
+              parentNavigatorKey: _rootNavigatorKey,
+              builder: (context, state) => const CheckInScreen(),
+            ),
+          ],
         ),
         GoRoute(
           path: '/profile',
@@ -118,14 +132,10 @@ final appRouter = GoRouter(
         ),
       ],
     ),
+    // 메시지함 (알림) - full screen
     GoRoute(
-      path: '/now_playing',
-      pageBuilder: (context, state) {
-        return const MaterialPage(
-          fullscreenDialog: true,
-          child: NowPlayingScreen(),
-        );
-      },
+      path: '/inbox',
+      builder: (context, state) => const InboxScreen(),
     ),
     GoRoute(
       path: '/create-contract',
@@ -167,6 +177,39 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/auth/register',
       builder: (context, state) => const RegisterScreen(),
+    ),
+    GoRoute(
+      path: '/auth/terms-agreement',
+      builder: (context, state) {
+        final extra = state.extra as Map<String, dynamic>?;
+        final nextRoute = extra?['nextRoute'] as String?;
+        final userEmail = extra?['userEmail'] as String?;
+        return TermsAgreementScreen(
+          nextRoute: nextRoute,
+          userEmail: userEmail,
+        );
+      },
+    ),
+    GoRoute(
+      path: '/auth/terms-detail',
+      builder: (context, state) {
+        final extra = state.extra as Map<String, dynamic>?;
+        final title = extra?['title'] as String? ?? '약관';
+        final type = extra?['type'] as String? ?? 'service_terms';
+        return TermsDetailScreen(title: title, type: type);
+      },
+    ),
+    GoRoute(
+      path: '/auth/verify-email',
+      builder: (context, state) {
+        final token = state.uri.queryParameters['token'];
+        if (token == null || token.trim().isEmpty) {
+          return const Scaffold(
+            body: Center(child: Text('유효하지 않은 인증 링크입니다.')),
+          );
+        }
+        return VerifyEmailScreen(token: token);
+      },
     ),
     GoRoute(
       path: '/onboarding',

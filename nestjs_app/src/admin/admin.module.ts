@@ -15,6 +15,13 @@ import { AdminUsersController } from "./admin-users.controller";
 import { AdminContractsController } from "./admin-contracts.controller";
 import { AdminPoliciesController } from "./admin-policies.controller";
 import { PushTokensModule } from "../push-tokens/push-tokens.module";
+import { SubscriptionsModule } from "../subscriptions/subscriptions.module";
+import { AdminSubscriptionsController } from "./admin-subscriptions.controller";
+import { SubscriptionPlansModule } from "../subscription-plans/subscription-plans.module";
+import { EncryptionService } from "../common/encryption.service";
+import { AdminPlansController } from "./admin-plans.controller";
+import { EventsModule } from "../events/events.module";
+import { AdminEventsController } from "./admin-events.controller";
 
 @Module({
   imports: [
@@ -26,8 +33,11 @@ import { PushTokensModule } from "../push-tokens/push-tokens.module";
     InboxModule,
     PoliciesModule,
     PushTokensModule,
+    SubscriptionsModule,
+    SubscriptionPlansModule,
+    EventsModule,
   ],
-  providers: [AdminService],
+  providers: [AdminService, EncryptionService],
   controllers: [
     AdminController,
     TemplateAdminController,
@@ -35,6 +45,9 @@ import { PushTokensModule } from "../push-tokens/push-tokens.module";
     AdminContractsController,
     AdminInboxController,
     AdminPoliciesController,
+    AdminSubscriptionsController,
+    AdminPlansController,
+    AdminEventsController,
   ],
   exports: [AdminService],
 })

@@ -43,6 +43,14 @@ export class AdminService implements OnModuleInit {
     return this.adminRepository.find({ order: { id: "ASC" } });
   }
 
+  async findAdminById(adminId: number) {
+    const admin = await this.adminRepository.findOne({ where: { id: adminId } });
+    if (!admin) {
+      throw new NotFoundException("관리자를 찾을 수 없습니다.");
+    }
+    return admin;
+  }
+
   async createAdmin(username: string, password: string) {
     const passwordHash = await bcrypt.hash(password, 10);
     const admin = this.adminRepository.create({

@@ -97,4 +97,80 @@ class AuthRepository {
       },
     );
   }
+
+  // 이메일 인증
+  Future<Map<String, dynamic>> verifyEmail(String token) async {
+    return await ApiClient.request<Map<String, dynamic>>(
+      path: ApiConfig.authVerifyEmail,
+      method: 'POST',
+      body: {'token': token},
+      fromJson: (json) => json as Map<String, dynamic>,
+    );
+  }
+
+  // 인증 메일 재발송
+  Future<Map<String, dynamic>> resendVerificationEmail(String email) async {
+    return await ApiClient.request<Map<String, dynamic>>(
+      path: ApiConfig.authResendVerification,
+      method: 'POST',
+      body: {'email': email},
+      fromJson: (json) => json as Map<String, dynamic>,
+    );
+  }
+
+  // 약관 동의 완료 (회원가입 마무리)
+  Future<AuthResponse> completeRegistration({
+    required String token,
+    required bool agreedToTerms,
+    required bool agreedToPrivacy,
+    required bool agreedToSensitive,
+    required bool agreedToMarketing,
+  }) async {
+    return await ApiClient.request<AuthResponse>(
+      path: ApiConfig.authCompleteRegistration,
+      method: 'POST',
+      token: token,
+      body: {
+        'agreedToTerms': agreedToTerms,
+        'agreedToPrivacy': agreedToPrivacy,
+        'agreedToSensitive': agreedToSensitive,
+        'agreedToMarketing': agreedToMarketing,
+      },
+      fromJson: (json) => AuthResponse.fromJson(json),
+    );
+  }
+
+  // 사용자 통계 조회 (구독, 포인트, 사용량)
+  Future<User> getUserStats(String token) async {
+    return await ApiClient.request<User>(
+      path: ApiConfig.authStats,
+      method: 'POST',
+      token: token,
+      fromJson: (json) => User.fromJson(json),
+    );
+  }
+
+  // 출석 체크
+  Future<Map<String, dynamic>> checkIn(String token) async {
+    return await ApiClient.request<Map<String, dynamic>>(
+      path: ApiConfig.authCheckIn,
+      method: 'POST',
+      token: token,
+      fromJson: (json) => json as Map<String, dynamic>,
+    );
+  }
+
+  // 광고 시청 포인트 적립
+  Future<Map<String, dynamic>> addPointsFromAd({
+    required String token,
+    int points = 1,
+  }) async {
+    return await ApiClient.request<Map<String, dynamic>>(
+      path: ApiConfig.authAddPointsFromAd,
+      method: 'POST',
+      token: token,
+      body: {'points': points},
+      fromJson: (json) => json as Map<String, dynamic>,
+    );
+  }
 }
