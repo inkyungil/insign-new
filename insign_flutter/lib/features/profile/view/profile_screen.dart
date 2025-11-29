@@ -184,6 +184,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       case 'notifications':
         context.push('/settings/notifications');
         break;
+      case 'usage-history':
+        context.push('/profile/usage-history');
+        break;
       case 'privacy':
         context.go('/privacy-policy');
         break;
@@ -323,6 +326,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _buildSettingTile(
             title: '알림 설정',
             onTap: () => _handleSettingTap('notifications'),
+          ),
+          const SizedBox(height: 12),
+          _buildSectionHeader('사용 내역'),
+          _buildSettingTile(
+            title: '계약 · 포인트 사용 내역',
+            onTap: () => _handleSettingTap('usage-history'),
           ),
           const SizedBox(height: 12),
           _buildSectionHeader('서비스'),

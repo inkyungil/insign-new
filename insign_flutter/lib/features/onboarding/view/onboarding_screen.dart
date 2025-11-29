@@ -53,6 +53,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   void _handleSkip() {
+    debugPrint('🔘 건너뛰기 버튼 클릭');
     _completeOnboarding();
   }
 
@@ -63,17 +64,29 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         curve: Curves.easeOut,
       );
     } else {
+      debugPrint('🔘 시작하기 버튼 클릭');
       _completeOnboarding();
     }
   }
 
   Future<void> _completeOnboarding() async {
+    debugPrint('✅ 온보딩 완료 시작');
     await context.read<OnboardingCubit>().complete();
+    debugPrint('✅ OnboardingCubit.complete() 완료');
+
     final isLoggedIn = context.read<AuthCubit>().state.isLoggedIn;
-    if (!mounted) return;
+    debugPrint('✅ 로그인 상태: $isLoggedIn');
+
+    if (!mounted) {
+      debugPrint('⚠️ Widget이 unmounted 상태');
+      return;
+    }
+
     if (isLoggedIn) {
+      debugPrint('➡️ /home으로 이동');
       context.go('/home');
     } else {
+      debugPrint('➡️ /auth/login으로 이동');
       context.go('/auth/login');
     }
   }
@@ -87,16 +100,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       body: SafeArea(
         child: Stack(
           children: [
-            Align(
-              alignment: Alignment.topRight,
-              child: Padding(
-                padding: const EdgeInsets.only(top: 12, right: 20),
-                child: TextButton(
-                  onPressed: _handleSkip,
-                  child: const Text('건너뛰기', style: TextStyle(color: Color(0xFF64748B))),
-                ),
-              ),
-            ),
             Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -191,6 +194,17 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 ),
                 const SizedBox(height: 48),
               ],
+            ),
+            // Place skip button last in the stack so it stays tappable above content.
+            Align(
+              alignment: Alignment.topRight,
+              child: Padding(
+                padding: const EdgeInsets.only(top: 12, right: 20),
+                child: TextButton(
+                  onPressed: _handleSkip,
+                  child: const Text('건너뛰기', style: TextStyle(color: Color(0xFF64748B))),
+                ),
+              ),
             ),
           ],
         ),

@@ -1,7 +1,10 @@
 // lib/data/auth_repository.dart
 
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'package:insign/core/config/api_config.dart';
 import 'package:insign/data/services/api_client.dart';
+import 'package:insign/models/usage_history_entry.dart';
 import 'package:insign/models/user.dart';
 
 class AuthRepository {
@@ -160,6 +163,42 @@ class AuthRepository {
     );
   }
 
+  // 출석 히스토리 조회
+  Future<List<DateTime>> getCheckInHistory({
+    required String token,
+    required int year,
+    required int month,
+  }) async {
+    final url = Uri.parse('${ApiConfig.apiEndpoint}${ApiConfig.checkInHistory}?year=$year&month=$month');
+
+    final headers = <String, String>{
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $token',
+    };
+
+    final response = await http.get(url, headers: headers);
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception('출석 히스토리 조회 실패: ${response.statusCode}');
+    }
+
+    final List<dynamic> payload = json.decode(response.body);
+
+    return payload
+        .map((item) {
+          // 날짜 문자열 (YYYY-MM-DD)을 DateTime으로 변환
+          final dateStr = item as String;
+          final parts = dateStr.split('-');
+          return DateTime(
+            int.parse(parts[0]), // year
+            int.parse(parts[1]), // month
+            int.parse(parts[2]), // day
+          );
+        })
+        .toList();
+  }
+
   // 광고 시청 포인트 적립
   Future<Map<String, dynamic>> addPointsFromAd({
     required String token,
@@ -171,6 +210,19 @@ class AuthRepository {
       token: token,
       body: {'points': points},
       fromJson: (json) => json as Map<String, dynamic>,
+    );
+  }
+
+  Future<List<UsageHistoryEntry>> getUsageHistory({
+    required String token,
+    int limit = 20,
+  }) async {
+    final sanitizedLimit = limit.clamp(1, 100);
+    return await ApiClient.requestList<UsageHistoryEntry>(
+      path: '${ApiConfig.authUsageHistory}?limit=$sanitizedLimit',
+      method: 'GET',
+      token: token,
+      fromJson: (json) => UsageHistoryEntry.fromJson(json),
     );
   }
 }

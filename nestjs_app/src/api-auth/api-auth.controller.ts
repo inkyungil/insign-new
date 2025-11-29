@@ -54,7 +54,25 @@ export class ApiAuthController {
     if (!userId) {
       throw new UnauthorizedException("인증이 필요합니다.");
     }
-    return this.pointsService.getCheckInHistory(userId, year, month);
+    console.log(`📅 출석 히스토리 조회 - userId: ${userId}, year: ${year}, month: ${month}`);
+    const history = await this.pointsService.getCheckInHistory(userId, year, month);
+    console.log(`✅ 출석 히스토리 결과: ${history.length}개`, history);
+    return history;
+  }
+
+  @Get("usage-history")
+  async getUsageHistory(
+    @Headers("authorization") authorization: string | undefined,
+    @Query("limit") limit?: string,
+  ) {
+    const userId = await this.extractUserId(authorization);
+    if (!userId) {
+      throw new UnauthorizedException("인증이 필요합니다.");
+    }
+
+    const parsedLimit = limit ? Number.parseInt(limit, 10) : 20;
+    const safeLimit = Number.isFinite(parsedLimit) ? parsedLimit : 20;
+    return this.apiAuthService.getUsageHistory(userId, safeLimit);
   }
 
   @Post("login")

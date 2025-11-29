@@ -1,19 +1,19 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-`insign_flutter/` hosts the production Flutter app, with UI flows split into `lib/screens/`, state in `lib/providers/`, shared services in `lib/services/`, and tokens plus theming helpers in `lib/theme/`. Every Dart source under `lib/` needs a matching spec in `test/` (for example `lib/providers/user_provider.dart` pairs with `test/providers/user_provider_test.dart`) so coverage dashboards remain stable. Asset pipelines expect fonts, images, and Lottie clips inside `insign_flutter/assets/` and registered in `pubspec.yaml`. Historical projects (`expo_insign/`, `nestjs_app/`, `web/`) are reference-only; coordinate with their owners before touching them.
+`insign_flutter/` is the only actively maintained app; all shipping code lives under `lib/`, where `lib/screens/` drives UI flows, `lib/providers/` hosts state, `lib/services/` centralizes integration logic, and `lib/theme/` exposes tokens. Each Dart file in `lib/` must have a mirror under `test/` (for example `lib/providers/user_provider.dart` pairs with `test/providers/user_provider_test.dart`) to keep coverage steady. Assets belong in `insign_flutter/assets/` and must be registered in `pubspec.yaml`. Legacy projects (`expo_insign/`, `nestjs_app/`, `web/`) are reference-only; consult their maintainers before editing.
 
 ## Build, Test, and Development Commands
-Run `cd insign_flutter && flutter pub get` after dependency bumps or asset updates. Use `flutter analyze` for static checks and `dart format .` to enforce two-space indenting with trailing commas. Execute `flutter test` for the full suite or target modules such as `flutter test test/screens/login_screen_test.dart`. Validate flows locally with `flutter run -d <device>` after confirming targets via `flutter devices`.
+Run `cd insign_flutter && flutter pub get` whenever dependencies or assets change. Use `flutter analyze` for static checks, `dart format .` for the canonical two-space format, and `flutter test` (or `flutter test test/screens/login_screen_test.dart`) to execute suites. Validate devices with `flutter devices` and launch with `flutter run -d <id>`.
 
 ## Coding Style & Naming Conventions
-Rely on Flutter defaults: files use `snake_case.dart`, classes UpperCamelCase, members lowerCamelCase, and constants SCREAMING_SNAKE_CASE. Keep imports sorted by the formatter and avoid unused exports. Pull typography, spacing, and color tokens from `lib/theme/` rather than embedding raw values so that design tokens remain the single source of truth.
+Follow Flutter defaults: files use `snake_case.dart`, classes UpperCamelCase, members lowerCamelCase, and constants SCREAMING_SNAKE_CASE. Prefer `final` and `const` where possible, keep imports sorted, and avoid unused exports. Pull typography, spacing, and color from `lib/theme/` instead of embedding literals so that design tokens remain authoritative.
 
 ## Testing Guidelines
-All specs rely on `package:flutter_test/flutter_test.dart` and should be grouped with descriptive `group()` names. Widget goldens live beside their subject in `test/screens/`; refresh intentional updates via `flutter test --update-goldens`. Run `flutter test --coverage` before merging and verify high-risk areas (auth, payments, provider mutations) for regression gaps.
+All specs rely on `package:flutter_test/flutter_test.dart` and should group scenarios with descriptive `group()` names. Widget goldens belong beside their subjects in `test/screens/`; refresh intentional changes with `flutter test --update-goldens`. Run `flutter test --coverage` before merging and focus regression passes on auth, payments, and provider mutations.
 
 ## Commit & Pull Request Guidelines
-Commits follow imperative subjects such as `Add contract detail screen` and should link issues (`Closes #123`) when applicable. PRs need a concise summary, the commands executed (`flutter analyze`, `flutter test`, device runs), and fresh screenshots or screen recordings for UI shifts. Document schema, environment, or release-impacting changes explicitly so QA can plan validation.
+Commits use imperative subjects such as `Add contract detail screen` and should reference tickets (`Closes #123`). Pull requests must recap what changed, list commands executed (`flutter analyze`, `flutter test`, device runs), and attach screenshots or recordings for UI adjustments. Call out schema, environment, or release-impacting shifts so QA can schedule verification.
 
 ## Security & Configuration Tips
-Never commit secrets, API keys, or keystores. Keep `.gitignore`, `pubspec.yaml`, and the contents of `insign_flutter/assets/` synchronized to avoid shipping stray files. Review Android and iOS builds on representative hardware whenever platform folders change, and note any config toggles in release notes.
+Never commit secrets, API keys, or keystores. Keep `.gitignore`, `pubspec.yaml`, and `insign_flutter/assets/` in sync to avoid stray artifacts. Test Android and iOS builds on representative hardware after any platform change, and capture new toggles or configuration flags in release notes.

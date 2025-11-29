@@ -82,13 +82,15 @@ npm run migrate:encrypt-contracts            # Encrypt existing contracts
 npm run migrate:encrypt-all-personal-data    # Encrypt all personal data
 npm run migrate:encrypt-user-emails          # Encrypt user emails
 npm run migrate:encrypt-contract-mail-logs   # Encrypt contract mail logs
+npm run migrate:add-email-verification       # Add email verification columns
 
 # Utility scripts
-npm run check:encryption     # Verify encryption status
-npm run check:user           # Check specific user
-npm run list:users           # List all users
-npm run verify:password      # Verify user password
-npm run reset:password       # Reset user password
+npm run check:encryption                     # Verify encryption status
+npm run check:user                           # Check specific user
+npm run list:users                           # List all users
+npm run verify:password                      # Verify user password
+npm run reset:password                       # Reset user password
+npm run update:consent-template-simple       # Update consent template
 ```
 
 ## Architecture
@@ -116,11 +118,15 @@ lib/
 │   ├── auth/
 │   │   ├── cubit/                # AuthCubit, AuthState
 │   │   ├── services/             # GoogleAuthService, KakaoAuthService
-│   │   └── view/                 # Login screens
-│   ├── contracts/                # Contract list/details
+│   │   └── view/                 # Login, Register, VerifyEmail, TermsAgreement screens
+│   ├── splash/                   # Splash screen
+│   ├── onboarding/               # Onboarding flow
+│   ├── home/                     # Home screen
+│   ├── contracts/                # Contract list/details/create/sign
 │   ├── templates/                # Contract templates
-│   ├── inbox/                    # Notifications/messages
-│   └── profile/                  # User profile
+│   ├── events/                   # Check-in events (attendance system)
+│   ├── settings/                 # Settings, privacy, terms, notifications
+│   └── profile/                  # User profile, member info, usage history
 ├── data/                         # Repository pattern
 │   ├── services/
 │   │   ├── api_client.dart       # HTTP wrapper with auto-auth
@@ -149,19 +155,25 @@ Order matters - this is the exact initialization flow:
 
 Provider hierarchy:
 ```
-MultiRepositoryProvider (PodcastRepository, StockRepository, AudioPlayer)
-  └── MultiBlocProvider (AuthCubit, OnboardingCubit, StockCubit, etc.)
-      └── MaterialApp.router (GoRouter)
-          └── AppShell (ShellRoute with BottomNavigationBar)
+MultiBlocProvider (AuthCubit, OnboardingCubit)
+  └── MaterialApp.router (GoRouter)
+      └── AppShell (ShellRoute with BottomNavigationBar)
 ```
 
 ### Routing Architecture
 
-**Initial flow**: `/splash` (4s) → session check → `/auth/login` OR `/onboarding` OR `/home`
+**Initial flow**: `/splash` (4s) → session & onboarding check → `/onboarding` OR `/auth/login` OR `/home`
+
+**Router guards**:
+- `AuthCubit.state.isSessionChecked`: Session restoration complete
+- `OnboardingCubit.state.isChecked`: Onboarding status checked
+- `OnboardingCubit.state.isCompleted`: User completed onboarding
+- Public paths (no auth required): `/splash`, `/auth/*`, `/privacy-policy`, `/terms-of-service`, `/sign/*`, `/onboarding`
 
 **Route types**:
-- **Shell routes** (with bottom nav): `/home`, `/contracts`, `/templates`, `/inbox`, `/profile`
-- **Full-screen** (no bottom nav): `/auth/login`, `/settings`, `/privacy-policy`
+- **Shell routes** (with bottom nav): `/home`, `/contracts`, `/templates`, `/events`, `/profile`
+- **Full-screen** (no bottom nav): `/auth/login`, `/auth/register`, `/auth/verify-email`, `/settings`, `/privacy-policy`, `/terms-of-service`
+- **Overlay routes**: Contract signing flows at `/sign/*`
 - Use `NoTransitionPage` for bottom nav screens to prevent animation
 
 **Adding routes**:
@@ -169,6 +181,7 @@ MultiRepositoryProvider (PodcastRepository, StockRepository, AudioPlayer)
 2. Shell routes: Add inside `ShellRoute.routes`
 3. Full-screen: Add as top-level `GoRoute`
 4. Parameters: Pass via `state.extra` as `Map<String, dynamic>`
+5. Update `publicPaths` list in redirect logic if route should be accessible without auth
 
 ### Authentication Flow
 
@@ -179,10 +192,11 @@ MultiRepositoryProvider (PodcastRepository, StockRepository, AudioPlayer)
 - `SessionService`: Persists `accessToken`, `user`, `expiresAt` to SharedPreferences
 - `ApiClient`: Auto-injects Bearer token from session into all API requests
 
-**Google OAuth IDs**:
-- Web: `723715287873-8jp38k93ksspp7jkeljv4v0jr2eobcb7.apps.googleusercontent.com`
-- Android: `723715287873-04874jd2a3533h1nqc76anaj7hu5q0ni.apps.googleusercontent.com`
+**Google OAuth Configuration**:
 - Firebase Project: `insign-69997` (Project Number: `723715287873`)
+- Web Client ID: `723715287873-8jp38k93ksspp7jkeljv4v0jr2eobcb7.apps.googleusercontent.com`
+- Android Client ID: `723715287873-04874jd2a3533h1nqc76anaj7hu5q0ni.apps.googleusercontent.com`
+- Configuration files: `android/app/google-services.json`, `web/index.html` (meta tag), `firebase_options.dart`
 
 ### NestJS Backend Architecture
 
@@ -207,9 +221,17 @@ src/
 ```
 
 **Key modules**:
-- `contracts/`: DOCX templating (docxtemplater), PDF conversion (Puppeteer), file uploads (Multer)
+- `contracts/`: DOCX templating (docxtemplater), PDF conversion (Puppeteer), file uploads (Multer), blockchain verification
 - `push-tokens/`: Firebase Admin SDK for FCM
 - `api-auth/`: OAuth verification for Google/Kakao
+- `mail/`: Email service for contract notifications (Nodemailer)
+
+**Technology Stack**:
+- DOCX generation: `docxtemplater` + `pizzip`
+- PDF conversion: `puppeteer` (headless Chrome)
+- Blockchain: `caver-js` for Klaytn network integration (contract verification)
+- Email: `nodemailer` with SMTP
+- File handling: `multer` for uploads
 
 **Environment** (`.env`):
 ```env
@@ -241,6 +263,12 @@ SMTP_PASS=<password>
 FIREBASE_PROJECT_ID=insign-69997
 FIREBASE_CLIENT_EMAIL=<service-account-email>
 FIREBASE_PRIVATE_KEY=<private-key>
+
+# Usage Limits & Points System
+CONTRACT_POINTS_COST=3                    # Points deducted per contract over monthly limit
+DEFAULT_MONTHLY_CONTRACT_LIMIT=4          # Free tier monthly contract allowance
+DEFAULT_SIGNUP_POINTS=12                  # Points awarded on registration
+DEFAULT_MONTHLY_POINTS_LIMIT=12           # Max points earnable per month
 ```
 
 **Admin Portal**:
@@ -335,17 +363,43 @@ npx ts-node -r tsconfig-paths/register src/scripts/list-users.ts
 - `/adm/*` → Admin portal EJS (NestJS)
 - `/static/*` → Backend static resources (NestJS)
 
+## Key Flutter Features
+
+**Digital Signatures**:
+- `signature: ^5.3.2` - Canvas-based signature capture for contract signing
+- Used in contract signing flow
+
+**Calendar & Events**:
+- `table_calendar: ^3.1.2` - Calendar widget for check-in/attendance system
+- Used in events/check-in features
+
+**PDF & File Handling**:
+- `pdf: ^3.10.6` + `printing: ^5.12.0` - PDF generation and printing
+- `file_picker: ^6.1.1` - File selection for contract attachments
+
+**Rich Text Display**:
+- `flutter_widget_from_html_core: ^0.14.11` - Renders HTML content (privacy policy, terms, etc.)
+- `url_launcher: ^6.2.3` - Opens external URLs
+
+**Custom Fonts**:
+- Bariol family (Regular, Thin, Light, Bold with italic variants)
+- Assets in `insign_flutter/assets/fonts/`, registered in `pubspec.yaml`
+
+**Versioning**:
+- Current version: `1.0.4+23` (build 23)
+
 ## Code Conventions
 
-### Flutter/Dart
+**Flutter/Dart**:
 - Korean UI text, English code/comments
 - Two-space indentation, trailing commas
 - File naming: `snake_case.dart`
 - Screens: `*_screen.dart`, Cubits: `*_cubit.dart`, Services: `*_service.dart`
 - **States: Do NOT extend Equatable** (use `copyWith` pattern)
 - Centralize theme tokens in `lib/core/theme/`
+- Korean locale: `ko_KR` with `flutter_localizations`
 
-### NestJS/TypeScript
+**NestJS/TypeScript**:
 - Controllers: `*.controller.ts`, Services: `*.service.ts`, DTOs: `*.dto.ts`, Entities: `*.entity.ts`
 - ESLint + Prettier formatting
 - Korean UI for admin portal, English code
@@ -372,10 +426,9 @@ npm run test:e2e          # E2E tests
 **History**: Originally a stock/investment app ("시그널 픽" / Quant), migrated to contract management ("인싸인" / Insign) in Nov 2025.
 
 **Legacy artifacts** (to be refactored):
-- `StockCubit` → should be `ContractCubit`
-- "Podcast" features → actually notifications/messaging
+- "Podcast" features → repurposed for notifications/messaging (naming not yet updated)
 - `podcast_repository.dart`, `portfolio_repository.dart` → legacy from stock app
-- MiniPlayer widget exists but hidden (`showMiniPlayer = false` in app.dart:51)
+- Some legacy code and naming conventions may still reference the original app purpose
 
 ## Important Notes
 
@@ -400,15 +453,16 @@ npm run test:e2e          # E2E tests
 - Encrypted fields: User emails, contract participant info, mail logs
 
 ### Push Notifications (Firebase Cloud Messaging)
-- `PushNotificationService.initialize()` called in `main.dart` after Firebase init
-- FCM token automatically registered with backend on app start
-- Background handler (`firebaseMessagingBackgroundHandler`) must be:
-  - Top-level function (not inside a class)
-  - Decorated with `@pragma('vm:entry-point')` for tree-shaking
-  - Defined before `main()` function
-- Foreground notifications handled by `PushNotificationService`
-- Inbox module in NestJS manages notification storage and push-tokens registration
-- Flutter local notifications used for displaying notifications
+- **Dependencies**: `firebase_core: ^2.30.1`, `firebase_messaging: ^14.9.1`, `flutter_local_notifications: ^17.1.0`
+- **Initialization**: `PushNotificationService.initialize()` called in `main.dart` after Firebase init
+- **Token Management**: FCM token automatically registered with backend on app start via `/push-tokens` endpoint
+- **Background Handler**: Must be top-level function with `@pragma('vm:entry-point')` decorator, defined before `main()`
+- **Foreground**: Handled by `PushNotificationService` using flutter_local_notifications
+- **Backend Integration**:
+  - NestJS `inbox/` module manages notification storage
+  - NestJS `push-tokens/` module handles FCM token registration
+  - Firebase Admin SDK sends push notifications via FCM
+- **Configuration**: `firebase_options.dart` (auto-generated), `google-services.json` (Android), `GoogleService-Info.plist` (iOS)
 
 ### WSL2 Development
 - Working directory: `/home/insign` (not `/mnt/c/android_prj/`)

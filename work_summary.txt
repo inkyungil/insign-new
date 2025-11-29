@@ -1,0 +1,7 @@
+- 사용 내역 화면을 추가하여 마이 페이지에서 계약 티켓과 포인트 거래 내역을 한 번에 볼 수 있게 함.
+- 백엔드 `/api/auth/usage-history`가 contracts + points_ledger를 통합해 내려주도록 확장;
+  새로운 필드를 contracts에 추가해 포인트 사용 여부/금액을 저장.
+- 가입/월 한도 관련 환경 변수(`DEFAULT_SIGNUP_POINTS`, `DEFAULT_MONTHLY_POINTS_LIMIT`)를 추가하고
+  UsersService가 해당 값을 사용하도록 수정; README 및 env 예시 업데이트.
+- 기존 계약 기록을 기반으로 `users.contracts_used_this_month`를 초기화하는 동기화 스크립트 작성
+  (cron으로 월초 자동 실행 가능).

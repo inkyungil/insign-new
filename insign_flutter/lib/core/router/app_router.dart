@@ -20,6 +20,7 @@ import 'package:insign/features/events/view/check_in_screen.dart';
 import 'package:insign/features/events/view/events_screen.dart';
 import 'package:insign/features/profile/view/profile_screen.dart';
 import 'package:insign/features/profile/view/member_info_screen.dart';
+import 'package:insign/features/profile/view/usage_history_screen.dart';
 import 'package:insign/features/settings/view/settings_screen.dart';
 import 'package:insign/features/settings/view/inbox_screen.dart';
 import 'package:insign/features/settings/view/notification_settings_screen.dart';
@@ -169,6 +170,10 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/settings/member-info',
       builder: (context, state) => const MemberInfoScreen(),
+    ),
+    GoRoute(
+      path: '/profile/usage-history',
+      builder: (context, state) => const UsageHistoryScreen(),
     ),
     GoRoute(
       path: '/auth/login',

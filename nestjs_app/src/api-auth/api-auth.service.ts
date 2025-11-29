@@ -19,6 +19,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { Contract } from "../contracts/contract.entity";
 import { MailService } from "../mail/mail.service";
+import { PointsService } from "../points/points.service";
 
 @Injectable()
 export class ApiAuthService {
@@ -33,6 +34,7 @@ export class ApiAuthService {
     private readonly mailService: MailService,
     @InjectRepository(Contract)
     private readonly contractRepository: Repository<Contract>,
+    private readonly pointsService: PointsService,
   ) {
     const configuredTtl = Number(
       this.configService.get<string>("JWT_ACCESS_TTL_SECONDS", "3600"),
@@ -310,5 +312,55 @@ export class ApiAuthService {
     // 정식 로그인 처리
     const updatedUser = await this.usersService.markLastLogin(userId);
     return this.buildAuthResponse(updatedUser);
+  }
+
+  async getUsageHistory(userId: number, limit: number = 20) {
+    const safeLimit = Math.min(Math.max(limit, 1), 100);
+    const [contracts, pointLedgers] = await Promise.all([
+      this.contractRepository.find({
+        where: { createdByUserId: userId },
+        order: { createdAt: "DESC" },
+        take: safeLimit,
+      }),
+      this.pointsService.getHistory(userId, safeLimit, 0),
+    ]);
+
+    const contractEntries = contracts.map((contract) => ({
+      type: "contract",
+      contractId: contract.id,
+      name: contract.name,
+      status: contract.status,
+      createdAt: contract.createdAt,
+      usedPointsForCreation: contract.usedPointsForCreation ?? false,
+      pointsSpentForCreation: contract.pointsSpentForCreation ?? 0,
+      contractsUsedBeforeCreation: contract.contractsUsedBeforeCreation,
+      contractLimitAtCreation: contract.contractLimitAtCreation,
+    }));
+
+    const pointEntries = pointLedgers.map((ledger) => ({
+      type: "points",
+      ledgerId: Number(ledger.id),
+      transactionType: ledger.transactionType,
+      amount: ledger.amount,
+      balanceAfter: ledger.balanceAfter,
+      description: ledger.description,
+      referenceType: ledger.referenceType,
+      referenceId: ledger.referenceId,
+      createdAt: ledger.createdAt,
+    }));
+
+    const combined = [...contractEntries, ...pointEntries];
+    combined.sort((a, b) => {
+      const timeA = new Date(a.createdAt).getTime();
+      const timeB = new Date(b.createdAt).getTime();
+      return timeB - timeA;
+    });
+
+    return combined.slice(0, safeLimit).map((entry) => ({
+      ...entry,
+      createdAt: entry.createdAt instanceof Date
+        ? entry.createdAt.toISOString()
+        : entry.createdAt,
+    }));
   }
 }

@@ -8,21 +8,61 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import * as bcrypt from "bcrypt";
 import * as crypto from "crypto";
+import { ConfigService } from "@nestjs/config";
 import { User } from "./user.entity";
 import { CreateUserDto } from "./dto/create-user.dto";
 import { UserDeletionLog } from "./user-deletion-log.entity";
 import { EncryptionService } from "../common/encryption.service";
 import { hashEmail, normalizeEmail } from "./email.utils";
+import { PointsService } from "../points/points.service";
+import { TransactionType } from "../points/entities/points-ledger.entity";
 
 @Injectable()
 export class UsersService {
+  private readonly contractPointCost: number;
+  private readonly defaultMonthlyContractLimit: number;
+  private readonly defaultSignupPoints: number;
+  private readonly defaultMonthlyPointsLimit: number;
+
   constructor(
     @InjectRepository(User)
     private readonly usersRepository: Repository<User>,
     @InjectRepository(UserDeletionLog)
     private readonly userDeletionLogRepository: Repository<UserDeletionLog>,
     private readonly encryptionService: EncryptionService,
-  ) {}
+    private readonly configService: ConfigService,
+    private readonly pointsService: PointsService,
+  ) {
+    let configuredCost = Number(this.configService.get("CONTRACT_POINTS_COST", "3"));
+    if (!Number.isFinite(configuredCost) || configuredCost <= 0) {
+      configuredCost = 3;
+    }
+    this.contractPointCost = Math.floor(configuredCost);
+
+    let configuredLimit = Number(
+      this.configService.get("DEFAULT_MONTHLY_CONTRACT_LIMIT", "4"),
+    );
+    if (!Number.isFinite(configuredLimit) || configuredLimit < -1) {
+      configuredLimit = 4;
+    }
+    this.defaultMonthlyContractLimit = Math.floor(configuredLimit);
+
+    let signupPoints = Number(
+      this.configService.get("DEFAULT_SIGNUP_POINTS", "0"),
+    );
+    if (!Number.isFinite(signupPoints) || signupPoints < 0) {
+      signupPoints = 0;
+    }
+    this.defaultSignupPoints = Math.floor(signupPoints);
+
+    let monthlyPointsLimit = Number(
+      this.configService.get("DEFAULT_MONTHLY_POINTS_LIMIT", "12"),
+    );
+    if (!Number.isFinite(monthlyPointsLimit) || monthlyPointsLimit < 0) {
+      monthlyPointsLimit = 0;
+    }
+    this.defaultMonthlyPointsLimit = Math.floor(monthlyPointsLimit);
+  }
 
   async createUser(dto: CreateUserDto) {
     const normalizedEmail = normalizeEmail(dto.email);
@@ -41,6 +81,11 @@ export class UsersService {
       provider: "local",
     });
     this.assignEncryptedEmail(user, normalizedEmail);
+    user.subscriptionTier = user.subscriptionTier ?? "free";
+    user.monthlyContractLimit = this.defaultMonthlyContractLimit;
+    user.contractsUsedThisMonth = 0;
+    user.points = this.defaultSignupPoints;
+    user.monthlyPointsLimit = this.defaultMonthlyPointsLimit;
     const saved = await this.usersRepository.save(user);
     return this.decryptUser(saved)!;
   }
@@ -165,6 +210,11 @@ export class UsersService {
         provider: "google",
         isActive: true,
         isEmailVerified: true, // Google OAuth users are auto-verified
+        subscriptionTier: "free",
+        monthlyContractLimit: this.defaultMonthlyContractLimit,
+        contractsUsedThisMonth: 0,
+        points: this.defaultSignupPoints,
+        monthlyPointsLimit: this.defaultMonthlyPointsLimit,
       });
     } else {
       user.googleId = user.googleId ?? payload.googleId;
@@ -181,6 +231,13 @@ export class UsersService {
     }
 
     this.assignEncryptedEmail(user, normalizedEmail);
+    if (isNewUser) {
+      user.subscriptionTier = user.subscriptionTier ?? "free";
+      user.monthlyContractLimit = this.defaultMonthlyContractLimit;
+      user.contractsUsedThisMonth = 0;
+      user.points = this.defaultSignupPoints;
+      user.monthlyPointsLimit = this.defaultMonthlyPointsLimit;
+    }
     const saved = await this.usersRepository.save(user);
     return { user: this.decryptUser(saved)!, isNewUser };
   }
@@ -306,10 +363,16 @@ export class UsersService {
       throw new Error("사용자를 찾을 수 없습니다.");
     }
 
+    const usageUpdated = this.ensureCurrentMonthUsage(user);
+    if (usageUpdated) {
+      await this.usersRepository.save(user);
+    }
+
     const isPremium = user.subscriptionTier === "premium";
     const contractsUsed = user.contractsUsedThisMonth;
     const contractsLimit = user.monthlyContractLimit;
     const points = user.points;
+    const pointsRequired = this.contractPointCost;
 
     // 프리미엄 사용자는 무제한
     if (isPremium) {
@@ -322,7 +385,7 @@ export class UsersService {
     }
 
     // 무료 계약서 남아있음
-    if (contractsUsed < contractsLimit) {
+    if (contractsLimit < 0 || contractsUsed < contractsLimit) {
       return {
         canCreate: true,
         contractsUsed,
@@ -332,10 +395,10 @@ export class UsersService {
     }
 
     // 포인트로 작성 가능
-    if (points >= 3) {
+    if (points >= pointsRequired) {
       return {
         canCreate: true,
-        reason: "포인트 3개 사용",
+        reason: `포인트 ${pointsRequired}개 사용`,
         contractsUsed,
         contractsLimit,
         points,
@@ -356,12 +419,57 @@ export class UsersService {
    * @deprecated SubscriptionsService.incrementContractUsage() 사용
    */
   async incrementContractUsage(userId: number, usePoints: boolean = false): Promise<void> {
-    // TODO: SubscriptionsService 주입 및 사용
-    // 임시로 아무 작업 안함
+    const user = await this.usersRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new Error("사용자를 찾을 수 없습니다.");
+    }
+
+    this.ensureCurrentMonthUsage(user);
+
+    const limit = user.monthlyContractLimit;
+    const hasFreeSlot = limit < 0 || user.contractsUsedThisMonth < limit;
+
+    if (!hasFreeSlot && !usePoints) {
+      throw new BadRequestException("월 계약서 작성 한도를 초과했습니다.");
+    }
+
+    if (usePoints) {
+      const requiredPoints = this.contractPointCost;
+      if (user.points < requiredPoints) {
+        throw new BadRequestException("포인트가 부족합니다.");
+      }
+      user.points -= requiredPoints;
+    }
+
+    user.contractsUsedThisMonth += 1;
+
+    await this.usersRepository.save(user);
+  }
+
+  private ensureCurrentMonthUsage(user: User): boolean {
+    const now = new Date();
+    const lastReset = user.lastResetDate ? new Date(user.lastResetDate) : null;
+
+    if (
+      lastReset &&
+      lastReset.getFullYear() === now.getFullYear() &&
+      lastReset.getMonth() === now.getMonth()
+    ) {
+      return false;
+    }
+
+    user.contractsUsedThisMonth = 0;
+    user.pointsEarnedThisMonth = 0;
+    if (user.subscriptionTier === "free") {
+      user.monthlyContractLimit = this.defaultMonthlyContractLimit;
+    }
+    user.monthlyPointsLimit = this.defaultMonthlyPointsLimit;
+    user.lastResetDate = new Date(now.getFullYear(), now.getMonth(), 1);
+    return true;
   }
 
   /**
-   * @deprecated MonthlyUsageService.checkIn() 사용
+   * 출석 체크 - PointsService를 사용하여 히스토리 기록
    */
   async checkIn(userId: number): Promise<{ success: boolean; points: number; message: string }> {
     const user = await this.usersRepository.findOne({ where: { id: userId } });
@@ -395,7 +503,16 @@ export class UsersService {
       };
     }
 
-    // 출석 체크: 포인트 1개 지급
+    // PointsService를 사용하여 포인트 적립 및 히스토리 기록
+    await this.pointsService.earn({
+      userId,
+      type: TransactionType.EARN_CHECKIN,
+      amount: 1,
+      description: '출석 체크 포인트',
+      expiresInDays: 365, // 1년 후 만료
+    });
+
+    // 사용자 정보 업데이트
     user.points += 1;
     user.pointsEarnedThisMonth += 1;
     user.lastCheckInDate = today;
@@ -427,5 +544,9 @@ export class UsersService {
     }
 
     return this.decryptUser(user)!;
+  }
+
+  getContractPointCost(): number {
+    return this.contractPointCost;
   }
 }

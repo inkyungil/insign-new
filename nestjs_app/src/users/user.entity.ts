@@ -111,10 +111,10 @@ export class User {
   @Column({ name: "last_reset_date", type: "date", nullable: true })
   lastResetDate?: Date | null;
 
-  @Column({ name: "points", type: "int", default: 12 })
+  @Column({ name: "points", type: "int", default: 0 })
   points!: number;
 
-  @Column({ name: "monthly_points_limit", type: "int", default: 12 })
+  @Column({ name: "monthly_points_limit", type: "int", default: 0 })
   monthlyPointsLimit!: number;
 
   @Column({ name: "points_earned_this_month", type: "int", default: 0 })

@@ -110,31 +110,32 @@ export class PointsService {
   }
 
   /**
-   * 출석 체크 기록 조회
+   * 출석 체크 기록 조회 - 한국 시간 기준 날짜 문자열 반환
    */
   async getCheckInHistory(
     userId: number,
     year: number,
     month: number,
-  ): Promise<Date[]> {
-    const startDate = new Date(year, month - 1, 1);
-    const endDate = new Date(year, month, 0, 23, 59, 59);
-
+  ): Promise<string[]> {
     const checkIns = await this.ledgerRepository
       .createQueryBuilder('ledger')
-      .select('ledger.createdAt')
+      .select("DATE_FORMAT(ledger.createdAt, '%Y-%m-%d')", 'checkInDate')
       .where('ledger.userId = :userId', { userId })
       .andWhere('ledger.transactionType = :type', {
         type: TransactionType.EARN_CHECKIN,
       })
-      .andWhere('ledger.createdAt BETWEEN :startDate AND :endDate', {
-        startDate,
-        endDate,
-      })
+      .andWhere('YEAR(ledger.createdAt) = :year', { year })
+      .andWhere('MONTH(ledger.createdAt) = :month', { month })
       .orderBy('ledger.createdAt', 'ASC')
-      .getMany();
+      .getRawMany();
 
-    return checkIns.map((c) => c.createdAt);
+    console.log('🔍 getRawMany 결과:', checkIns);
+
+    // 날짜 문자열로 반환 (YYYY-MM-DD)
+    const result = checkIns.map((row) => row.checkInDate);
+    console.log('📅 변환된 날짜 배열:', result);
+
+    return result;
   }
 
   /**

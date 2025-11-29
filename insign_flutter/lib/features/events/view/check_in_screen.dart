@@ -18,11 +18,14 @@ class _CheckInScreenState extends State<CheckInScreen> {
   User? _userStats;
   bool _loadingStats = false;
   bool _checkingIn = false;
+  List<DateTime> _checkInHistory = [];
+  bool _loadingHistory = false;
 
   @override
   void initState() {
     super.initState();
     _loadUserStats();
+    _loadCheckInHistory();
   }
 
   Future<void> _loadUserStats() async {
@@ -54,6 +57,55 @@ class _CheckInScreenState extends State<CheckInScreen> {
     }
   }
 
+  Future<void> _loadCheckInHistory() async {
+    setState(() {
+      _loadingHistory = true;
+    });
+
+    try {
+      final token = await SessionService.getAccessToken();
+      if (token == null) {
+        setState(() {
+          _loadingHistory = false;
+        });
+        return;
+      }
+
+      final today = DateTime.now();
+      debugPrint('📅 출석 히스토리 조회: ${today.year}년 ${today.month}월');
+
+      final history = await _authRepository.getCheckInHistory(
+        token: token,
+        year: today.year,
+        month: today.month,
+      );
+
+      debugPrint('✅ 출석 히스토리 로드 완료: ${history.length}개');
+      for (var date in history) {
+        debugPrint('  - ${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}');
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _checkInHistory = history;
+      });
+    } catch (error) {
+      debugPrint('❌ 출석 히스토리 로딩 실패: $error');
+    } finally {
+      if (!mounted) return;
+      setState(() {
+        _loadingHistory = false;
+      });
+    }
+  }
+
+  Future<void> _refreshAll() async {
+    await Future.wait([
+      _loadUserStats(),
+      _loadCheckInHistory(),
+    ]);
+  }
+
   Future<void> _handleCheckIn() async {
     if (_checkingIn) return;
 
@@ -74,7 +126,10 @@ class _CheckInScreenState extends State<CheckInScreen> {
       if (!mounted) return;
 
       if (success) {
-        await _loadUserStats();
+        await Future.wait([
+          _loadUserStats(),
+          _loadCheckInHistory(),
+        ]);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(message),
@@ -123,7 +178,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
       ),
       backgroundColor: const Color(0xFFF8FAFC),
       body: RefreshIndicator(
-        onRefresh: _loadUserStats,
+        onRefresh: _refreshAll,
         color: primaryColor,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
@@ -418,7 +473,6 @@ class _CheckInScreenState extends State<CheckInScreen> {
     final totalDays = DateUtils.getDaysInMonth(today.year, today.month);
     final leadingGap = (firstDay.weekday + 6) % 7; // Monday as first column
     final totalCells = ((leadingGap + totalDays + 6) ~/ 7) * 7;
-    final lastCheckIn = user?.lastCheckInDate != null ? DateTime.tryParse(user!.lastCheckInDate!) : null;
 
     final cells = List<DateTime?>.generate(totalCells, (index) {
       if (index < leadingGap) return null;
@@ -480,7 +534,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
               return _CalendarCell(
                 date: cells[index],
                 today: today,
-                lastCheckIn: lastCheckIn,
+                checkInHistory: _checkInHistory,
               );
             },
           ),
@@ -489,16 +543,16 @@ class _CheckInScreenState extends State<CheckInScreen> {
             spacing: 16,
             runSpacing: 8,
             children: const [
-              _LegendDot(color: primaryColor, label: '출석 완료'),
+              _LegendDot(color: Colors.red, label: '출석 완료', isSmall: true),
               _LegendDot(color: Color(0xFFE0E7FF), label: '오늘'),
               _LegendDot(color: Color(0xFFF3F4F6), label: '대기 중'),
             ],
           ),
-          if (user?.lastCheckInDate != null)
+          if (_checkInHistory.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(top: 12),
               child: Text(
-                '마지막 출석일: ${user!.lastCheckInDate!.split('T').first}',
+                '이번 달 출석 ${_checkInHistory.length}일',
                 style: const TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
               ),
             ),
@@ -556,8 +610,13 @@ class _WeekdayLabel extends StatelessWidget {
 class _LegendDot extends StatelessWidget {
   final Color color;
   final String label;
+  final bool isSmall;
 
-  const _LegendDot({required this.color, required this.label});
+  const _LegendDot({
+    required this.color,
+    required this.label,
+    this.isSmall = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -565,9 +624,13 @@ class _LegendDot extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          width: 12,
-          height: 12,
-          decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(6)),
+          width: isSmall ? 6 : 12,
+          height: isSmall ? 6 : 12,
+          decoration: BoxDecoration(
+            color: color,
+            shape: isSmall ? BoxShape.circle : BoxShape.rectangle,
+            borderRadius: isSmall ? null : BorderRadius.circular(6),
+          ),
         ),
         const SizedBox(width: 6),
         Text(
@@ -582,12 +645,12 @@ class _LegendDot extends StatelessWidget {
 class _CalendarCell extends StatelessWidget {
   final DateTime? date;
   final DateTime today;
-  final DateTime? lastCheckIn;
+  final List<DateTime> checkInHistory;
 
   const _CalendarCell({
     required this.date,
     required this.today,
-    required this.lastCheckIn,
+    required this.checkInHistory,
   });
 
   @override
@@ -597,16 +660,13 @@ class _CalendarCell extends StatelessWidget {
     }
 
     final bool isToday = DateUtils.isSameDay(date, today);
-    final bool isCheckedIn = lastCheckIn != null && DateUtils.isSameDay(date, lastCheckIn);
+    final bool isCheckedIn = checkInHistory.any((checkInDate) => DateUtils.isSameDay(date, checkInDate));
 
     Color backgroundColor;
     Color textColor;
     FontWeight fontWeight = FontWeight.w600;
 
-    if (isCheckedIn) {
-      backgroundColor = primaryColor;
-      textColor = Colors.white;
-    } else if (isToday) {
+    if (isToday) {
       backgroundColor = const Color(0xFFE0E7FF);
       textColor = primaryColor;
     } else if (date!.isBefore(today)) {
@@ -624,18 +684,36 @@ class _CalendarCell extends StatelessWidget {
         color: backgroundColor,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: isCheckedIn ? Colors.transparent : const Color(0xFFE2E8F0),
+          color: const Color(0xFFE2E8F0),
         ),
       ),
-      child: Center(
-        child: Text(
-          date!.day.toString(),
-          style: TextStyle(
-            color: textColor,
-            fontSize: 14,
-            fontWeight: fontWeight,
+      child: Stack(
+        children: [
+          Center(
+            child: Text(
+              date!.day.toString(),
+              style: TextStyle(
+                color: textColor,
+                fontSize: 14,
+                fontWeight: fontWeight,
+              ),
+            ),
           ),
-        ),
+          // 출석한 날에 빨간색 점 표시
+          if (isCheckedIn)
+            Positioned(
+              top: 4,
+              right: 4,
+              child: Container(
+                width: 6,
+                height: 6,
+                decoration: const BoxDecoration(
+                  color: Colors.red,
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }

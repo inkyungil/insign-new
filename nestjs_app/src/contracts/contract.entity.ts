@@ -125,6 +125,26 @@ export class Contract {
   @Column({ name: "status", type: "varchar", length: 60, default: "draft" })
   status!: string;
 
+  @Column({ name: "used_points_for_creation", type: "boolean", default: false })
+  usedPointsForCreation!: boolean;
+
+  @Column({ name: "points_spent_for_creation", type: "int", default: 0 })
+  pointsSpentForCreation!: number;
+
+  @Column({
+    name: "contracts_used_before_creation",
+    type: "int",
+    nullable: true,
+  })
+  contractsUsedBeforeCreation!: number | null;
+
+  @Column({
+    name: "contract_limit_at_creation",
+    type: "int",
+    nullable: true,
+  })
+  contractLimitAtCreation!: number | null;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt!: Date;
 

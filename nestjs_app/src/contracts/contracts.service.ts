@@ -47,6 +47,11 @@ export class ContractsService {
     dto: CreateContractDto,
     createdByUserId?: number | null,
   ) {
+    let usePoints = false;
+    let contractsUsedBeforeCreation: number | null = null;
+    let contractLimitAtCreation: number | null = null;
+    let pointCost = 0;
+
     // 계약서 작성 제한 체크 (로그인한 사용자만)
     if (createdByUserId) {
       const canCreate = await this.usersService.canCreateContract(
@@ -60,7 +65,14 @@ export class ContractsService {
       }
 
       // 포인트 사용 여부 판단
-      const usePoints = canCreate.contractsUsed >= canCreate.contractsLimit;
+      usePoints =
+        canCreate.contractsLimit >= 0 &&
+        canCreate.contractsUsed >= canCreate.contractsLimit;
+      contractsUsedBeforeCreation = canCreate.contractsUsed;
+      contractLimitAtCreation = canCreate.contractsLimit;
+      pointCost = usePoints
+        ? this.usersService.getContractPointCost()
+        : 0;
 
       // 실제 작성 전에 카운트 증가 (나중에 실패해도 롤백하지 않음)
       await this.usersService.incrementContractUsage(createdByUserId, usePoints);
@@ -120,6 +132,10 @@ export class ContractsService {
       signatureToken: this.generateSignatureToken(),
       signatureTokenExpiresAt: this.generateTokenExpiry(),
       status: "draft",
+      usedPointsForCreation: usePoints,
+      pointsSpentForCreation: pointCost,
+      contractsUsedBeforeCreation,
+      contractLimitAtCreation,
       signatureDeclinedAt: null,
       signatureCompletedAt: null,
       signatureImage: null,

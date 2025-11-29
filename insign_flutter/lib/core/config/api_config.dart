@@ -18,6 +18,7 @@ class ApiConfig {
   static const String authStats = '/auth/stats';
   static const String authCheckIn = '/auth/check-in';
   static const String checkInHistory = '/auth/check-in-history';
+  static const String authUsageHistory = '/auth/usage-history';
   static const String authAddPointsFromAd = '/auth/add-points-from-ad';
   static const String pushTokenRegister = '/push-tokens';
   static const String pushTokenRemove = '/push-tokens/remove';

@@ -43,6 +43,10 @@ nestjs_app/
    DB_PASSWORD=secret
    DB_NAME=insign
    SESSION_SECRET=change-me
+   CONTRACT_POINTS_COST=3  # 계약 한도 초과 시 차감할 포인트 수
+   DEFAULT_MONTHLY_CONTRACT_LIMIT=4  # 무료 계층 기본 월 계약 티켓 수
+   DEFAULT_SIGNUP_POINTS=12  # 가입 시 기본 포인트
+   DEFAULT_MONTHLY_POINTS_LIMIT=12  # 월 포인트 적립 한도
    ```
 
 3. 개발 서버 실행
@@ -55,6 +59,13 @@ nestjs_app/
 
 4. Swagger 문서 확인
    - `http://localhost:8081/docs`
+
+환경 변수 참고:
+
+- `CONTRACT_POINTS_COST`: 월 무료 한도를 모두 사용한 뒤 계약서를 1건 더 작성할 때 차감할 포인트 수(기본 3P).
+- `DEFAULT_MONTHLY_CONTRACT_LIMIT`: 무료 구독 계층에 기본으로 부여되는 월 계약 티켓 수(기본 4개).
+- `DEFAULT_SIGNUP_POINTS`: 새 사용자가 가입할 때 부여되는 기본 포인트(기본 12P).
+- `DEFAULT_MONTHLY_POINTS_LIMIT`: 출석/광고 등으로 한 달 동안 적립할 수 있는 최대 포인트(기본 12P).
 
 ## 다음 단계 제안
 
