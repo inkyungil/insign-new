@@ -43,7 +43,7 @@ export class TemplatesController {
   @Get()
   async list(@Headers("authorization") authorization: string | undefined) {
     await this.ensureAuthenticated(authorization);
-    const templates = await this.templatesService.findAll();
+    const templates = await this.templatesService.findAllActive();
     return templates.map(TemplateResponseDto.fromEntity);
   }
 

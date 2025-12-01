@@ -29,4 +29,6 @@ class ApiConfig {
   static const String inbox = '/inbox';
   static const String events = '/events';
   static const String appUpdateInfo = '/app/update-info';
+  static const String inquiriesEndpoint = '/inquiries';
+  static const String myInquiriesEndpoint = '/inquiries/my';
 }

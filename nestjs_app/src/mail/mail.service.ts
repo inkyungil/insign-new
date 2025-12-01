@@ -20,6 +20,13 @@ interface EmailVerificationMail {
   verificationLink: string;
 }
 
+interface InquiryResponseMail {
+  to: string;
+  inquirySubject: string;
+  inquiryContent: string;
+  responseMessage: string;
+}
+
 @Injectable()
 export class MailService {
   private readonly logger = new Logger(MailService.name);
@@ -79,11 +86,17 @@ export class MailService {
         to: payload.to,
         subject: `[인싸인] ${payload.contractName} 서명 요청`,
         html: `
-          <p>안녕하세요,</p>
-          <p><strong>${payload.contractName}</strong> 계약서에 대한 서명 요청이 도착했습니다.</p>
-          <p>아래 버튼을 눌러 계약 내용을 확인하고 서명해 주세요.</p>
-          <p><a href="${payload.link}" style="display:inline-block;padding:12px 20px;background:#4F46E5;color:#fff;border-radius:8px;text-decoration:none;">계약서 확인</a></p>
-          <p>위 링크가 열리지 않는 경우 다음 주소를 복사해 브라우저에 붙여넣으세요.<br />${payload.link}</p>
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <p>안녕하세요,</p>
+            <p><strong>${payload.contractName}</strong> 계약서에 대한 서명 요청이 도착했습니다.</p>
+            <p>아래 버튼을 눌러 계약 내용을 확인하고 서명해 주세요.</p>
+            <p><a href="${payload.link}" style="display:inline-block;padding:12px 20px;background:#4F46E5;color:#fff;border-radius:8px;text-decoration:none;">계약서 확인</a></p>
+            <p style="color: #666; font-size: 14px;">위 링크가 열리지 않는 경우 다음 주소를 복사해 브라우저에 붙여넣으세요.<br />${payload.link}</p>
+            <p style="color: #999; font-size: 12px; margin-top: 30px; border-top: 1px solid #eee; padding-top: 20px;">
+              ⚠️ 본 메일은 발신 전용입니다. 회신하셔도 답변을 받으실 수 없습니다.<br />
+              문의사항이 있으시면 인싸인 앱 내 고객센터를 이용해 주세요.
+            </p>
+          </div>
         `,
       });
     } catch (error) {
@@ -123,7 +136,9 @@ export class MailService {
             </p>
             <p style="color: #999; font-size: 12px; margin-top: 30px; border-top: 1px solid #eee; padding-top: 20px;">
               이 링크는 24시간 동안 유효합니다.<br />
-              본인이 요청하지 않은 경우 이 메일을 무시하셔도 됩니다.
+              본인이 요청하지 않은 경우 이 메일을 무시하셔도 됩니다.<br /><br />
+              ⚠️ 본 메일은 발신 전용입니다. 회신하셔도 답변을 받으실 수 없습니다.<br />
+              문의사항이 있으시면 인싸인 앱 내 고객센터를 이용해 주세요.
             </p>
           </div>
         `,
@@ -131,6 +146,54 @@ export class MailService {
       this.logger.log(`이메일 인증 메일 발송 성공: ${payload.to}`);
     } catch (error) {
       this.logger.error("이메일 인증 메일 발송 실패", error as Error);
+      throw new InternalServerErrorException("메일 발송에 실패했습니다.");
+    }
+  }
+
+  async sendInquiryResponseMail(payload: InquiryResponseMail) {
+    const user = this.configService.get<string>("SMTP_USER");
+    const from = this.configService.get<string>("SMTP_FROM") ?? user;
+
+    this.logger.debug("====== 문의 답변 메일 전송 시도 ======");
+    this.logger.debug(`수신자: ${payload.to}`);
+
+    try {
+      const transporter = this.getTransporter();
+      await transporter.sendMail({
+        from: `"인싸인 고객센터" <${from}>`,
+        to: payload.to,
+        subject: `[인싸인] 문의하신 내용에 답변드립니다 - ${payload.inquirySubject}`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #4F46E5;">인싸인 고객센터</h2>
+            <p>안녕하세요,</p>
+            <p>문의하신 내용에 대해 답변드립니다.</p>
+
+            <div style="background: #f9fafb; padding: 20px; border-radius: 8px; margin: 20px 0;">
+              <h3 style="margin-top: 0; color: #374151; font-size: 16px;">문의 내용</h3>
+              <p style="margin: 5px 0; color: #6b7280; font-size: 14px;"><strong>제목:</strong> ${payload.inquirySubject}</p>
+              <p style="margin: 5px 0; color: #6b7280; font-size: 14px; white-space: pre-wrap;">${payload.inquiryContent}</p>
+            </div>
+
+            <div style="background: #eff6ff; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #4F46E5;">
+              <h3 style="margin-top: 0; color: #1e40af; font-size: 16px;">답변</h3>
+              <p style="margin: 0; color: #1e3a8a; font-size: 14px; white-space: pre-wrap;">${payload.responseMessage}</p>
+            </div>
+
+            <p style="color: #666; font-size: 14px;">
+              추가 문의사항이 있으시면 인싸인 앱 내 고객센터를 통해 다시 문의해 주세요.
+            </p>
+
+            <p style="color: #999; font-size: 12px; margin-top: 30px; border-top: 1px solid #eee; padding-top: 20px;">
+              ⚠️ 본 메일은 발신 전용입니다. 회신하셔도 답변을 받으실 수 없습니다.<br />
+              추가 문의는 인싸인 앱 내 고객센터를 이용해 주세요.
+            </p>
+          </div>
+        `,
+      });
+      this.logger.log(`문의 답변 메일 발송 성공: ${payload.to}`);
+    } catch (error) {
+      this.logger.error("문의 답변 메일 발송 실패", error as Error);
       throw new InternalServerErrorException("메일 발송에 실패했습니다.");
     }
   }

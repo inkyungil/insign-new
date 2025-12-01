@@ -33,6 +33,8 @@ import { PointsLedger } from "./points/entities/points-ledger.entity";
 import { MonthlyUsage } from "./subscriptions/entities/monthly-usage.entity";
 import { EventsModule } from "./events/events.module";
 import { Event } from "./events/event.entity";
+import { InquiriesModule } from "./inquiries/inquiries.module";
+import { Inquiry } from "./inquiries/inquiry.entity";
 
 @Module({
   imports: [
@@ -62,6 +64,7 @@ import { Event } from "./events/event.entity";
           PointsLedger,
           MonthlyUsage,
           Event,
+          Inquiry,
         ],
         synchronize: config.get("DB_SYNCHRONIZE", "true") !== "false",
       }),
@@ -82,6 +85,7 @@ import { Event } from "./events/event.entity";
     SubscriptionPlansModule,
     SubscriptionsModule,
     EventsModule,
+    InquiriesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

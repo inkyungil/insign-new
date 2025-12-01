@@ -187,6 +187,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       case 'usage-history':
         context.push('/profile/usage-history');
         break;
+      case 'support':
+        context.push('/support');
+        break;
       case 'privacy':
         context.go('/privacy-policy');
         break;
@@ -335,6 +338,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           const SizedBox(height: 12),
           _buildSectionHeader('서비스'),
+          _buildSettingTile(
+            title: '고객센터',
+            onTap: () => _handleSettingTap('support'),
+          ),
+          _buildInnerDivider(),
           _buildSettingTile(
             title: '개인정보 처리 방침',
             onTap: () => _handleSettingTap('privacy'),

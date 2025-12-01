@@ -11,85 +11,7 @@
   </head>
   <body class="hold-transition sidebar-mini">
     <div class="wrapper">
-      <aside class="main-sidebar sidebar-dark-primary elevation-4">
-        <a href="/adm/dashboard" class="brand-link">
-          <span class="brand-text font-weight-light">인싸인 Admin</span>
-        </a>
-        <div class="sidebar">
-          <div class="user-panel mt-3 pb-3 mb-3 d-flex">
-            <div class="image">
-              <i class="fas fa-user-shield fa-2x text-white-50"></i>
-            </div>
-            <div class="info">
-              <a href="/adm/dashboard" class="d-block"><%= user?.username ?? '관리자' %></a>
-            </div>
-          </div>
-          <nav class="mt-2">
-            <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu">
-              <li class="nav-item">
-                <a href="/adm/dashboard" class="nav-link <%= activePage === 'dashboard' ? 'active' : '' %>">
-                  <i class="nav-icon fas fa-tachometer-alt"></i>
-                  <p>대시보드</p>
-                </a>
-              </li>
-              <li class="nav-item">
-                <a href="/adm/list" class="nav-link <%= activePage === 'admins' ? 'active' : '' %>">
-                  <i class="nav-icon fas fa-users-cog"></i>
-                  <p>관리자 계정</p>
-                </a>
-              </li>
-              <li class="nav-item">
-                <a href="/adm/users" class="nav-link <%= activePage === 'users' ? 'active' : '' %>">
-                  <i class="nav-icon fas fa-user-friends"></i>
-                  <p>가입자 관리</p>
-                </a>
-              </li>
-              <li class="nav-item">
-                <a href="/adm/contracts" class="nav-link <%= activePage === 'contracts' ? 'active' : '' %>">
-                  <i class="nav-icon fas fa-file-signature"></i>
-                  <p>계약 관리</p>
-                </a>
-              </li>
-              <li class="nav-item">
-                <a href="/adm/templates" class="nav-link <%= activePage === 'templates' ? 'active' : '' %>">
-                  <i class="nav-icon fas fa-file-alt"></i>
-                  <p>템플릿 관리</p>
-                </a>
-              </li>
-              <li class="nav-item">
-                <a href="/adm/subscriptions" class="nav-link <%= activePage === 'subscriptions' ? 'active' : '' %>">
-                  <i class="nav-icon fas fa-sync-alt"></i>
-                  <p>구독 관리</p>
-                </a>
-              </li>
-              <li class="nav-item">
-                <a href="/adm/plans" class="nav-link <%= activePage === 'plans' ? 'active' : '' %>">
-                  <i class="nav-icon fas fa-layer-group"></i>
-                  <p>요금제 관리</p>
-                </a>
-              </li>
-              <li class="nav-item">
-                <a href="/adm/policies" class="nav-link <%= activePage === 'policies' ? 'active' : '' %>">
-                  <i class="nav-icon fas fa-shield-alt"></i>
-                  <p>약관/정책 관리</p>
-                </a>
-              </li>
-              <li class="nav-item">
-              <li class="nav-item">
-                <a href="/adm/events" class="nav-link <%= activePage === 'events' ? 'active' : '' %>">
-                  <i class="nav-icon fas fa-calendar-alt"></i>
-                  <p>이벤트 관리</p>
-                </a>
-              </li>
-                <a href="/adm/inbox" class="nav-link active">
-                  <i class="nav-icon fas fa-envelope"></i>
-                  <p>메시지함</p>
-                </a>
-              </li>
-            </ul>
-          </nav>
-        </div>
-      </aside>
+      <%- include("partials/sidebar") %>
 
       <div class="content-wrapper">
         <section class="content-header">
@@ -185,259 +107,1801 @@
                           <i class="fas fa-filter mr-1"></i> 필터 적용
                         </button>
                         <a href="/adm/inbox" class="btn btn-default ml-sm-2 mb-2 mb-sm-0">
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                           초기화
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                         </a>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                       </form>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                     </div>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                   </div>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                   <div class="card-body table-responsive p-0" style="max-height: 580px;">
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                     <table class="table table-hover text-nowrap">
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                       <thead>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                         <tr>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                           <th style="width: 70px">ID</th>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                           <th style="width: 160px">사용자</th>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                           <th style="width: 110px">유형</th>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                           <th>제목 / 내용</th>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                           <th style="width: 140px">상태</th>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                           <th style="width: 140px">수신일</th>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                           <th style="width: 170px" class="text-right">동작</th>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                         </tr>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                       </thead>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                       <tbody>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                         <% if (!messages.length) { %>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                         <tr>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                           <td colspan="7" class="text-center text-muted py-4">표시할 메시지가 없습니다.</td>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                         </tr>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                         <% } %>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                         <% messages.forEach(function (item) { %>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                         <tr class="<%= item.isRead ? '' : 'table-warning' %>">
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                           <td><strong>#<%= item.id %></strong></td>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                           <td>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                             <div><i class="fas fa-user mr-1 text-secondary"></i><%= item.userEmail %></div>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                             <small class="text-muted"><%= item.userName %></small>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                           </td>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                           <td>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                             <span class="badge <%= item.kindBadgeClass %>"><%= item.kindLabel %></span>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                           </td>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                           <td>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                             <div class="font-weight-bold"><%= item.title %></div>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                             <small class="text-muted d-block"><%= item.bodyPreview || '내용 없음' %></small>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                             <% if (item.tags && item.tags.length) { %>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                             <div class="mt-1">
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                               <% item.tags.forEach(function(tag){ %>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                               <span class="badge badge-light text-muted mr-1">#<%= tag %></span>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                               <% }) %>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                             </div>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                             <% } %>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                             <% if (item.metadata) { %>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                             <small class="text-info"><i class="fas fa-info-circle mr-1"></i>메타데이터 포함</small>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                             <% } %>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                           </td>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                           <td>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                             <% if (item.isRead) { %>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                             <span class="badge badge-secondary">읽음</span>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                             <% } else { %>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                             <span class="badge badge-success">읽지 않음</span>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                             <% } %>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                             <div><small class="text-muted">읽음: <%= item.readAt %></small></div>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                           </td>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                           <td><small class="text-muted"><%= item.createdAt %></small></td>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                           <td class="text-right">
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                             <form method="post" action="/adm/inbox/<%= item.id %>/read" class="d-inline">
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                               <input type="hidden" name="redirectTo" value="<%= currentUrl %>" />
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                               <input type="hidden" name="isRead" value="<%= !item.isRead %>" />
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                               <button type="submit" class="btn btn-sm <%= item.isRead ? 'btn-outline-info' : 'btn-outline-success' %>">
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                                 <i class="fas <%= item.isRead ? 'fa-envelope' : 'fa-envelope-open' %> mr-1"></i>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                                 <%= item.isRead ? '미읽음' : '읽음 처리' %>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                               </button>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                             </form>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                             <form
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                               method="post"
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                               action="/adm/inbox/<%= item.id %>/delete"
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                               class="d-inline ml-1"
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                               onsubmit="return confirm('선택한 메시지를 삭제하시겠습니까?');"
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                             >
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                               <input type="hidden" name="redirectTo" value="<%= currentUrl %>" />
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                               <button type="submit" class="btn btn-sm btn-outline-danger">
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                                 <i class="fas fa-trash-alt"></i>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                               </button>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                             </form>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                           </td>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                         </tr>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                         <% }) %>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                       </tbody>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                     </table>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                   </div>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                 </div>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
               </div>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
 
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
               <div class="col-lg-4">
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                 <div class="card card-outline card-primary">
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                   <div class="card-header">
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                     <h3 class="card-title">새 메시지 발송</h3>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                   </div>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                   <form method="post" action="/adm/inbox/send">
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                     <input type="hidden" name="redirectTo" value="<%= currentUrl %>" />
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                     <div class="card-body">
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                       <div class="form-group">
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                         <label>발송 대상</label>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                         <div class="custom-control custom-radio">
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                           <input
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                             type="radio"
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                             class="custom-control-input"
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                             id="audience-all"
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                             name="audience"
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                             value="all"
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                             checked
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                           />
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                           <label class="custom-control-label" for="audience-all">
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                             전체 사용자 (활성)
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                           </label>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                         </div>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                         <div class="custom-control custom-radio mt-1">
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                           <input
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                             type="radio"
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                             class="custom-control-input"
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                             id="audience-single"
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                             name="audience"
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                             value="single"
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                           />
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                           <label class="custom-control-label" for="audience-single">
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                             특정 사용자 지정
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                           </label>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                         </div>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                         <small class="form-text text-muted">
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                           전체 발송은 활성 사용자 <strong><%= activeUserCountLabel %></strong>명에게 인앱 알림을 생성합니다.
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                         </small>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                       </div>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                       <div class="form-group">
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                         <label class="d-block">메시지 유형</label>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                         <select class="form-control" id="message-kind" name="kind" required>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                           <option value="">선택해주세요</option>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                           <% kindOptions.filter(function(option){ return option.value !== 'all'; }).forEach(function(option){ %>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                           <option value="<%= option.value %>"><%= option.label %></option>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                           <% }) %>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                         </select>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                       </div>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                       <div class="form-group d-none" data-audience-target="email">
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                         <label for="message-email">수신자 이메일</label>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                         <div class="input-group">
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                           <div class="input-group-prepend">
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                             <span class="input-group-text"><i class="fas fa-at"></i></span>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                           </div>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                           <input
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                             type="email"
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                             class="form-control"
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                             id="message-email"
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                             name="email"
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                             placeholder="user@example.com"
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                           />
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                         </div>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                         <small class="form-text text-muted">특정 사용자에게 보낼 때만 입력하세요.</small>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                       </div>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                       <div class="form-group">
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                         <label for="message-title">제목</label>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                         <input type="text" class="form-control" id="message-title" name="title" placeholder="제목" required />
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                       </div>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                       <div class="form-group">
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                         <label for="message-body">내용</label>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                         <textarea
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                           id="message-body"
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                           name="body"
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                           class="form-control"
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                           rows="5"
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                           placeholder="전달할 메시지를 작성하세요."
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                           required
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                         ></textarea>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                         <small class="form-text text-muted">줄바꿈과 간단한 텍스트만 지원됩니다.</small>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                       </div>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                       <div class="form-group">
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                         <label for="message-tags">태그 (선택)</label>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                         <input
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                           type="text"
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                           class="form-control"
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                           id="message-tags"
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                           name="tags"
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                           placeholder="예: 공지,업데이트"
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                         />
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                         <small class="form-text text-muted">콤마(,)로 구분하여 여러 개 입력할 수 있습니다.</small>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                       </div>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                       <div class="form-group">
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                         <label for="message-metadata">메타데이터 (선택)</label>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                         <textarea
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                           id="message-metadata"
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                           name="metadata"
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                           class="form-control"
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                           rows="3"
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                           placeholder='예: {"link": "https://in-sign.shop"}'
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                         ></textarea>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                         <small class="form-text text-muted">필요한 경우 JSON 형식으로 추가 정보를 첨부하세요.</small>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                       </div>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                     </div>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                     <div class="card-footer">
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                       <button type="submit" class="btn btn-primary btn-block"><i class="fas fa-paper-plane mr-1"></i> 발송하기</button>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                     </div>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                   </form>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
                 </div>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
               </div>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
             </div>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
           </div>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
         </section>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
       </div>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
 
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
       <footer class="main-footer">
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
         <strong>인싸인 Admin</strong>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
         <div class="float-right d-none d-sm-inline">총 <%= summary.total %>건 / 미확인 <%= summary.unread %>건</div>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
       </footer>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
     </div>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
 
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
     <form id="logout-form" method="post" action="/adm/logout" style="display: none;"></form>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
 
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
     <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.4/dist/jquery.min.js" crossorigin="anonymous"></script>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
     <script src="https://cdn.jsdelivr.net/npm/overlayscrollbars@1.13.1/js/jquery.overlayScrollbars.min.js" crossorigin="anonymous"></script>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
     <script src="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/js/adminlte.min.js" crossorigin="anonymous"></script>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
     <script>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
       document.addEventListener('DOMContentLoaded', function () {
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
         document.querySelectorAll('[data-action="logout"]').forEach(function (el) {
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
           el.addEventListener('click', function (event) {
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
             event.preventDefault();
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
             document.getElementById('logout-form').submit();
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
           });
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
         });
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
 
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
         var audienceRadios = document.querySelectorAll('input[name="audience"]');
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
         var emailGroup = document.querySelector('[data-audience-target="email"]');
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
         var emailInput = document.getElementById('message-email');
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
 
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
         function refreshAudienceControls() {
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
           var selected = document.querySelector('input[name="audience"]:checked');
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
           var mode = selected ? selected.value : 'all';
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
           var showEmail = mode === 'single';
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
 
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
           if (emailGroup) {
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
             if (showEmail) {
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
               emailGroup.classList.remove('d-none');
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
             } else {
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
               emailGroup.classList.add('d-none');
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
             }
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
           }
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
 
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
           if (emailInput) {
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
             emailInput.disabled = !showEmail;
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
             emailInput.required = showEmail;
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
             if (!showEmail) {
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
               emailInput.value = '';
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
             }
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
           }
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
         }
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
 
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
         audienceRadios.forEach(function (radio) {
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
           radio.addEventListener('change', refreshAudienceControls);
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
         });
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
 
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
         refreshAudienceControls();
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
       });
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
     </script>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
   </body>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>
 </html>
+              <li class="nav-item">
+                <a href="/adm/inquiries" class="nav-link <%= activePage === 'inquiries' ? 'active' : '' %>">
+                  <i class="nav-icon fas fa-question-circle"></i>
+                  <p>문의 관리</p>
+                </a>
+              </li>

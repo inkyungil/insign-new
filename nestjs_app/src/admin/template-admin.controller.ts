@@ -145,6 +145,7 @@ export class TemplateAdminController {
     @Body("name") name: string,
     @Body("category") category: string,
     @Body("description") description: string,
+    @Body("isActive") isActiveRaw: string,
     @Body("content") bodyContent: string,
     @Body("formSchema") rawFormSchema: string,
     @Body("samplePayload") rawSamplePayload: string,
@@ -159,6 +160,7 @@ export class TemplateAdminController {
       name: string;
       category: string;
       description: string;
+      isActive?: boolean;
       content?: string | null;
       filePath?: string | null;
       fileName?: string | null;
@@ -170,6 +172,10 @@ export class TemplateAdminController {
       category: category?.trim() ?? "",
       description: description?.trim() ?? "",
     };
+
+    if (typeof isActiveRaw === "string") {
+      updatePayload.isActive = isActiveRaw === "true";
+    }
 
     // 새 파일이 업로드된 경우
     if (file) {
@@ -203,6 +209,15 @@ export class TemplateAdminController {
 
     const updated = await this.templatesService.updateTemplate(id, updatePayload);
 
+    if (!updated) {
+      throw new NotFoundException("템플릿을 찾을 수 없습니다.");
+    }
+  }
+
+  @Post(":id/toggle-active")
+  @Redirect(`${ADMIN_BASE_PATH}/templates`, 302)
+  async toggleActive(@Param("id", ParseIntPipe) id: number) {
+    const updated = await this.templatesService.toggleTemplateActive(id);
     if (!updated) {
       throw new NotFoundException("템플릿을 찾을 수 없습니다.");
     }

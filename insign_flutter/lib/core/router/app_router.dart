@@ -26,6 +26,7 @@ import 'package:insign/features/settings/view/inbox_screen.dart';
 import 'package:insign/features/settings/view/notification_settings_screen.dart';
 import 'package:insign/features/settings/view/privacy_policy_screen.dart';
 import 'package:insign/features/settings/view/terms_of_service_screen.dart';
+import 'package:insign/features/support/view/support_screen.dart';
 import 'package:insign/features/splash/view/splash_screen.dart';
 import 'package:insign/features/onboarding/view/onboarding_screen.dart';
 import 'package:insign/features/onboarding/cubit/onboarding_cubit.dart';
@@ -166,6 +167,10 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/settings/notifications',
       builder: (context, state) => const NotificationSettingsScreen(),
+    ),
+    GoRoute(
+      path: '/support',
+      builder: (context, state) => const SupportScreen(),
     ),
     GoRoute(
       path: '/settings/member-info',

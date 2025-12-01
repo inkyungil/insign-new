@@ -38,6 +38,10 @@ class SettingsScreen extends StatelessWidget {
               title: '서비스',
               children: [
                 _buildSettingItem(
+                  title: '고객센터',
+                  onTap: () => context.push('/support'),
+                ),
+                _buildSettingItem(
                   title: '개인정보 처리 방침',
                   onTap: () => context.go('/privacy-policy'),
                 ),

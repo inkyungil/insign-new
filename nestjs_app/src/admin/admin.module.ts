@@ -22,6 +22,8 @@ import { EncryptionService } from "../common/encryption.service";
 import { AdminPlansController } from "./admin-plans.controller";
 import { EventsModule } from "../events/events.module";
 import { AdminEventsController } from "./admin-events.controller";
+import { InquiriesModule } from "../inquiries/inquiries.module";
+import { AdminInquiriesController } from "./admin-inquiries.controller";
 
 @Module({
   imports: [
@@ -36,6 +38,7 @@ import { AdminEventsController } from "./admin-events.controller";
     SubscriptionsModule,
     SubscriptionPlansModule,
     EventsModule,
+    InquiriesModule,
   ],
   providers: [AdminService, EncryptionService],
   controllers: [
@@ -48,6 +51,7 @@ import { AdminEventsController } from "./admin-events.controller";
     AdminSubscriptionsController,
     AdminPlansController,
     AdminEventsController,
+    AdminInquiriesController,
   ],
   exports: [AdminService],
 })

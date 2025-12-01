@@ -1350,7 +1350,14 @@ export class TemplatesService {
   }
 
   findAll() {
-    return this.templatesRepository.find({ order: { updatedAt: "DESC" } });
+    return this.templatesRepository.find({ order: { id: "ASC" } });
+  }
+
+  findAllActive() {
+    return this.templatesRepository.find({
+      where: { isActive: true },
+      order: { updatedAt: "DESC" },
+    });
   }
 
   findOne(id: number) {
@@ -1370,6 +1377,7 @@ export class TemplatesService {
   }) {
     const template = this.templatesRepository.create({
       ...data,
+      isActive: true,
       formSchema: data.formSchema ?? null,
       samplePayload: data.samplePayload ?? null,
       filePath: data.filePath ?? null,
@@ -1386,6 +1394,7 @@ export class TemplatesService {
       name: string;
       category: string;
       description: string;
+      isActive?: boolean;
       content?: string | null;
       filePath?: string | null;
       fileName?: string | null;
@@ -1402,6 +1411,10 @@ export class TemplatesService {
     template.category = data.category;
     template.description = data.description;
     template.lastUpdatedAt = new Date();
+
+    if (data.isActive !== undefined) {
+      template.isActive = data.isActive;
+    }
 
     // content 업데이트 (제공된 경우에만)
     if (data.content !== undefined) {
@@ -1425,6 +1438,15 @@ export class TemplatesService {
     if (data.samplePayload !== undefined) {
       template.samplePayload = data.samplePayload;
     }
+    return this.templatesRepository.save(template);
+  }
+
+  async toggleTemplateActive(id: number) {
+    const template = await this.findOne(id);
+    if (!template) {
+      return null;
+    }
+    template.isActive = !template.isActive;
     return this.templatesRepository.save(template);
   }
 
@@ -1513,7 +1535,7 @@ export class TemplatesService {
       const parsed = Number(configured);
       if (!Number.isNaN(parsed)) {
         const template = await this.templatesRepository.findOne({
-          where: { id: parsed },
+          where: { id: parsed, isActive: true },
         });
         if (template) {
           return template.id;
@@ -1523,7 +1545,7 @@ export class TemplatesService {
 
     // 2. 이름으로 "기본 자유 계약서" 찾기
     const byName = await this.templatesRepository.findOne({
-      where: { name: "기본 자유 계약서" },
+      where: { name: "기본 자유 계약서", isActive: true },
     });
     if (byName) {
       return byName.id;
@@ -1531,7 +1553,7 @@ export class TemplatesService {
 
     // 3. 카테고리로 "기본" 찾기
     const byCategory = await this.templatesRepository.findOne({
-      where: { category: "기본" },
+      where: { category: "기본", isActive: true },
       order: { id: "ASC" },
     });
     return byCategory?.id ?? null;

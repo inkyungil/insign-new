@@ -42,6 +42,9 @@ export class Template {
   @Column({ name: "sample_payload", type: "json", nullable: true })
   samplePayload!: Record<string, unknown> | null;
 
+  @Column({ name: "is_active", type: "boolean", default: true })
+  isActive!: boolean;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt!: Date;
 

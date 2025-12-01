@@ -1,0 +1,155 @@
+<% const activePage = 'inquiries'; %>
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>문의 상세</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.15.4/css/all.min.css" crossorigin="anonymous" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/css/adminlte.min.css" crossorigin="anonymous" />
+  </head>
+  <body class="hold-transition sidebar-mini">
+    <div class="wrapper">
+      <%- include("../partials/sidebar") %>
+
+      <div class="content-wrapper">
+        <section class="content-header">
+          <div class="container-fluid">
+            <div class="row mb-2">
+              <div class="col-sm-6">
+                <h1>문의 상세</h1>
+              </div>
+              <div class="col-sm-6">
+                <ol class="breadcrumb float-sm-right">
+                  <li class="breadcrumb-item"><a href="/adm/inquiries">문의 관리</a></li>
+                  <li class="breadcrumb-item active">상세</li>
+                </ol>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="content">
+          <div class="container-fluid">
+            <div class="row">
+              <div class="col-md-8">
+                <div class="card">
+                  <div class="card-header">
+                    <h3 class="card-title">문의 내용</h3>
+                  </div>
+                  <div class="card-body">
+                    <dl class="row">
+                      <dt class="col-sm-3">ID</dt>
+                      <dd class="col-sm-9"><%= inquiry.id %></dd>
+
+                      <dt class="col-sm-3">카테고리</dt>
+                      <dd class="col-sm-9"><%= inquiry.categoryLabel %></dd>
+
+                      <dt class="col-sm-3">상태</dt>
+                      <dd class="col-sm-9">
+                        <span class="badge <%= inquiry.statusBadgeClass %>">
+                          <%= inquiry.statusLabel %>
+                        </span>
+                      </dd>
+
+                      <dt class="col-sm-3">작성자</dt>
+                      <dd class="col-sm-9">
+                        <%= inquiry.user?.displayName || inquiry.user?.email || '-' %>
+                        <% if (inquiry.user?.email) { %>
+                          <br><small class="text-muted"><%= inquiry.user.email %></small>
+                        <% } %>
+                      </dd>
+
+                      <dt class="col-sm-3">제목</dt>
+                      <dd class="col-sm-9"><strong><%= inquiry.subject %></strong></dd>
+
+                      <dt class="col-sm-3">내용</dt>
+                      <dd class="col-sm-9" style="white-space: pre-wrap;"><%= inquiry.content %></dd>
+
+                      <% if (inquiry.attachmentUrls && inquiry.attachmentUrls.length > 0) { %>
+                      <dt class="col-sm-3">첨부파일</dt>
+                      <dd class="col-sm-9">
+                        <% inquiry.attachmentUrls.forEach(url => { %>
+                          <a href="<%= url %>" target="_blank" class="btn btn-sm btn-outline-primary mb-1">
+                            <i class="fas fa-paperclip"></i> 파일 보기
+                          </a><br>
+                        <% }) %>
+                      </dd>
+                      <% } %>
+
+                      <dt class="col-sm-3">작성일</dt>
+                      <dd class="col-sm-9"><%= inquiry.createdAtFormatted %></dd>
+
+                      <% if (inquiry.answeredAt) { %>
+                      <dt class="col-sm-3">답변일</dt>
+                      <dd class="col-sm-9"><%= inquiry.answeredAtFormatted %></dd>
+                      <% } %>
+
+                      <% if (inquiry.adminNote) { %>
+                      <dt class="col-sm-3">관리자 메모</dt>
+                      <dd class="col-sm-9" style="white-space: pre-wrap;"><%= inquiry.adminNote %></dd>
+                      <% } %>
+                    </dl>
+                  </div>
+                </div>
+              </div>
+
+              <div class="col-md-4">
+                <div class="card">
+                  <div class="card-header">
+                    <h3 class="card-title">상태 변경</h3>
+                  </div>
+                  <div class="card-body">
+                    <form method="POST" action="/adm/inquiries/<%= inquiry.id %>/status">
+                      <div class="form-group">
+                        <label>상태</label>
+                        <select name="status" class="form-control">
+                          <% statuses.forEach(status => { %>
+                            <option value="<%= status %>" <%= inquiry.status === status ? 'selected' : '' %>>
+                              <%= getStatusLabel(status) %>
+                            </option>
+                          <% }) %>
+                        </select>
+                      </div>
+                      <div class="form-group">
+                        <label>관리자 메모</label>
+                        <textarea name="adminNote" class="form-control" rows="3"><%= inquiry.adminNote || '' %></textarea>
+                      </div>
+                      <button type="submit" class="btn btn-primary btn-block">
+                        <i class="fas fa-save"></i> 저장
+                      </button>
+                    </form>
+                  </div>
+                </div>
+
+                <div class="card">
+                  <div class="card-header">
+                    <h3 class="card-title">이메일 답변 보내기</h3>
+                  </div>
+                  <div class="card-body">
+                    <form method="POST" action="/adm/inquiries/<%= inquiry.id %>/respond">
+                      <div class="form-group">
+                        <label>답변 내용</label>
+                        <textarea name="message" class="form-control" rows="8" required placeholder="고객님께 보낼 답변을 입력하세요..."></textarea>
+                        <small class="form-text text-muted">
+                          이메일로 답변이 발송되며, 상태가 '답변 완료'로 자동 변경됩니다.
+                        </small>
+                      </div>
+                      <button type="submit" class="btn btn-success btn-block">
+                        <i class="fas fa-envelope"></i> 답변 발송
+                      </button>
+                    </form>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.1/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/js/adminlte.min.js"></script>
+  </body>
+</html>

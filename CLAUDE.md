@@ -125,6 +125,7 @@ lib/
 │   ├── contracts/                # Contract list/details/create/sign
 │   ├── templates/                # Contract templates
 │   ├── events/                   # Check-in events (attendance system)
+│   ├── support/                  # Customer support/inquiry system
 │   ├── settings/                 # Settings, privacy, terms, notifications
 │   └── profile/                  # User profile, member info, usage history
 ├── data/                         # Repository pattern
@@ -172,7 +173,7 @@ MultiBlocProvider (AuthCubit, OnboardingCubit)
 
 **Route types**:
 - **Shell routes** (with bottom nav): `/home`, `/contracts`, `/templates`, `/events`, `/profile`
-- **Full-screen** (no bottom nav): `/auth/login`, `/auth/register`, `/auth/verify-email`, `/settings`, `/privacy-policy`, `/terms-of-service`
+- **Full-screen** (no bottom nav): `/auth/login`, `/auth/register`, `/auth/verify-email`, `/settings`, `/privacy-policy`, `/terms-of-service`, `/support`
 - **Overlay routes**: Contract signing flows at `/sign/*`
 - Use `NoTransitionPage` for bottom nav screens to prevent animation
 
@@ -215,6 +216,7 @@ src/
 ├── templates/               # Template management
 ├── inbox/                   # Push notification inbox
 ├── push-tokens/             # FCM token registration
+├── inquiries/               # Customer support/inquiry system
 ├── mail/                    # Email service (Nodemailer)
 ├── admin/                   # Admin portal controllers
 └── scripts/                 # Migration/encryption scripts
@@ -274,7 +276,8 @@ DEFAULT_MONTHLY_POINTS_LIMIT=12           # Max points earnable per month
 **Admin Portal**:
 - Default admin account: `admin / admin1234` (auto-created on first run)
 - Access at `https://in-sign.shop/adm/dashboard`
-- EJS templates in `nestjs_app/views/`
+- EJS templates in `nestjs_app/views/admin/`
+- Admin features: User management, contracts, templates, subscriptions, plans, policies, events, inbox, inquiries
 
 ## Key Workflows
 
