@@ -27,7 +27,6 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _passwordController = TextEditingController();
   bool _isSubmitting = false;
   bool _isGoogleLoading = false;
-  StreamSubscription<GoogleSignInAccount?>? _googleSignInSubscription;
 
   @override
   void initState() {
@@ -40,17 +39,10 @@ class _LoginScreenState extends State<LoginScreen> {
         _showToast('로그인이 필요한 서비스입니다.', isError: true);
       }
     });
-
-    if (kIsWeb) {
-      unawaited(GoogleAuthService.ensureInitialized());
-      _googleSignInSubscription =
-          GoogleAuthService.userChanges.listen(_onGoogleAccountChanged);
-    }
   }
 
   @override
   void dispose() {
-    _googleSignInSubscription?.cancel();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
@@ -120,79 +112,6 @@ class _LoginScreenState extends State<LoginScreen> {
     } catch (error) {
       final message = error.toString().replaceFirst('Exception: ', '');
       _showToast(message.isEmpty ? '재발송에 실패했습니다.' : message, isError: true);
-    }
-  }
-
-  Future<void> _onGoogleAccountChanged(
-      GoogleSignInAccount? account) async {
-    if (!kIsWeb || account == null) {
-      return;
-    }
-    if (!mounted) {
-      return;
-    }
-    if (_isGoogleLoading || context.read<AuthCubit>().state.isLoggedIn) {
-      return;
-    }
-
-    setState(() {
-      _isGoogleLoading = true;
-    });
-
-    try {
-      // Google 로그인 시도
-      final success =
-          await context.read<AuthCubit>().loginWithGoogle(account: account);
-
-      if (!mounted) {
-        return;
-      }
-
-      setState(() {
-        _isGoogleLoading = false;
-      });
-
-      if (!success) {
-        _showToast('Google 로그인에 실패했습니다.', isError: true);
-        await GoogleAuthService.signOut();
-        return;
-      }
-
-      final authState = context.read<AuthCubit>().state;
-      final user = authState.user;
-
-      // 서버에서 약관 동의가 필요하다고 표시한 경우
-      final needsTermsAgreement = user?.agreedToTerms != true ||
-                                  user?.agreedToPrivacy != true ||
-                                  user?.agreedToSensitive != true;
-
-      if (needsTermsAgreement && user?.email != null) {
-        // 약관 동의 필요 - 약관 동의 화면으로 이동
-        if (!mounted) return;
-
-        // 현재 임시 토큰을 가져와서 전달
-        final tempToken = await SessionService.getAccessToken();
-
-        context.go('/auth/terms-agreement', extra: {
-          'nextRoute': '/home',
-          'userEmail': user!.email,
-          'tempToken': tempToken,
-        });
-        return;
-      }
-
-      // 약관 동의 완료 - 홈으로 이동
-      final nickname = user?.displayName ?? user?.email ?? '사용자';
-      _showToast('$nickname님, 반갑습니다!');
-      context.go('/home');
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _isGoogleLoading = false;
-        });
-      }
-      _showToast('Google 로그인에 실패했습니다.', isError: true);
-      await GoogleAuthService.signOut();
     }
   }
 
@@ -309,9 +228,38 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF6A4C93),
-      body: SafeArea(
+    return BlocListener<AuthCubit, AuthState>(
+      listener: (context, state) async {
+        // Google 로그인 후 상태 변화 감지
+        if (state.isLoggedIn && state.user != null) {
+          print('[LoginScreen] BlocListener: User logged in: ${state.user!.email}');
+
+          // 약관 동의 확인
+          final needsTermsAgreement = state.user!.agreedToTerms != true ||
+                                      state.user!.agreedToPrivacy != true ||
+                                      state.user!.agreedToSensitive != true;
+
+          if (needsTermsAgreement) {
+            // 약관 동의 필요 - 약관 동의 화면으로 이동
+            final tempToken = await SessionService.getAccessToken();
+            if (!context.mounted) return;
+
+            context.go('/auth/terms-agreement', extra: {
+              'nextRoute': '/home',
+              'userEmail': state.user!.email,
+              'tempToken': tempToken,
+            });
+          } else {
+            // 약관 동의 완료 - 홈으로 이동
+            final nickname = state.user!.displayName ?? state.user!.email;
+            _showToast('$nickname님, 반갑습니다!');
+            context.go('/home');
+          }
+        }
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFF6A4C93),
+        body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(24.0),
@@ -621,6 +569,7 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           ),
         ),
+      ),
       ),
     );
   }

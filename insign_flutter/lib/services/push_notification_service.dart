@@ -256,11 +256,11 @@ class PushNotificationService {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString(_tokenStorageKey);
   }
-}
 
-Future<void> _syncAuthorizationStatus(AuthorizationStatus status) async {
-  final shouldEnable = status == AuthorizationStatus.authorized ||
-      status == AuthorizationStatus.provisional;
+  static Future<void> _syncAuthorizationStatus(AuthorizationStatus status) async {
+    final shouldEnable = status == AuthorizationStatus.authorized ||
+        status == AuthorizationStatus.provisional;
 
-  await NotificationPreferencesService.setAppAndContract(shouldEnable);
+    await NotificationPreferencesService.setAppAndContract(shouldEnable);
+  }
 }

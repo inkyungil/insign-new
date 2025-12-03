@@ -9,6 +9,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:insign/core/router/app_router.dart';
 import 'package:insign/core/theme/app_theme.dart';
 import 'package:insign/data/services/kakao_auth_service.dart';
+import 'package:insign/data/services/google_auth_service.dart';
 import 'package:insign/features/auth/cubit/auth_cubit.dart';
 import 'package:insign/features/onboarding/cubit/onboarding_cubit.dart';
 import 'package:insign/services/back_button_service.dart';
@@ -26,6 +27,8 @@ void main() async {
     } catch (_) {
       // 이미 설정된 경우 (웹 핫리로드 등) 무시
     }
+    // Google Sign-In for Web SDK 초기화
+    await GoogleAuthService.ensureInitialized();
   }
 
   // 카카오 SDK 초기화

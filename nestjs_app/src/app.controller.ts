@@ -23,4 +23,9 @@ export class AppController {
   getAppUpdateInfo() {
     return this.appService.getAppUpdateInfo();
   }
+
+  @Get("api/app/update-info")
+  getAppUpdateInfoViaApi() {
+    return this.appService.getAppUpdateInfo();
+  }
 }

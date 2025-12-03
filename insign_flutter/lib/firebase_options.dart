@@ -10,6 +10,8 @@ class DefaultFirebaseOptions {
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
         return android;
+      case TargetPlatform.iOS:
+        return ios;
       default:
         throw UnsupportedError(
           'FirebaseOptions are not set up for this platform. Configure Firebase for ${defaultTargetPlatform.name}.',
@@ -23,5 +25,14 @@ class DefaultFirebaseOptions {
     messagingSenderId: '723715287873',
     projectId: 'insign-69997',
     storageBucket: 'insign-69997.firebasestorage.app',
+  );
+
+  static const FirebaseOptions ios = FirebaseOptions(
+    apiKey: 'AIzaSyA7OQqZZNKaXNIxJlzKWEJXGugd89UlBS8',
+    appId: '1:723715287873:ios:6bc355a5313ac2655d8fc0',
+    messagingSenderId: '723715287873',
+    projectId: 'insign-69997',
+    storageBucket: 'insign-69997.firebasestorage.app',
+    iosBundleId: 'app.insign',
   );
 }

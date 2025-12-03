@@ -1,5 +1,7 @@
 // lib/features/auth/cubit/auth_cubit.dart
 
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -13,10 +15,27 @@ import 'package:insign/services/push_notification_service.dart';
 /// Manages authentication state and user information.
 class AuthCubit extends Cubit<AuthState> {
   final AuthRepository _authRepository;
+  StreamSubscription<GoogleSignInAccount?>? _googleSignInSubscription;
 
   AuthCubit({AuthRepository? authRepository})
       : _authRepository = authRepository ?? AuthRepository(),
-        super(const AuthState());
+        super(const AuthState()) {
+    if (kIsWeb) {
+      _googleSignInSubscription =
+          GoogleAuthService.userChanges.listen((account) {
+        if (account != null && !state.isLoggedIn) {
+          print('[AuthCubit] Detected Google user change, attempting login.');
+          loginWithGoogle(account: account);
+        }
+      });
+    }
+  }
+
+  @override
+  Future<void> close() {
+    _googleSignInSubscription?.cancel();
+    return super.close();
+  }
 
   /// 앱 시작 시 세션 확인
   Future<void> checkSession() async {
@@ -32,6 +51,17 @@ class AuthCubit extends Cubit<AuthState> {
           accessToken: session.accessToken,
         );
       } else {
+        // 로컬 세션이 없을 경우, 웹에서 자동 구글 로그인을 시도
+        if (kIsWeb) {
+          try {
+            // 이 호출은 단지 구글 SDK에 세션 복구를 "시도"하라는 신호를 보냅니다.
+            // 실제 로그인은 userChanges 스트림 리스너가 처리합니다.
+            unawaited(GoogleAuthService.signInSilently());
+          } catch (e) {
+            print('[AuthCubit] Silent Google sign-in failed: $e');
+            // 실패해도 정상적인 흐름이므로 앱이 멈추지 않음
+          }
+        }
         emit(const AuthState(isSessionChecked: true));
       }
     } catch (e) {
@@ -96,11 +126,15 @@ class AuthCubit extends Cubit<AuthState> {
   /// Google 로그인
   Future<bool> loginWithGoogle({GoogleSignInAccount? account}) async {
     try {
+      print('[GAuth] login start (web: $kIsWeb)');
       final GoogleSignInAccount? resolvedAccount =
           account ?? await GoogleAuthService.signIn();
       if (resolvedAccount == null) {
+        print('[GAuth] GoogleSignInAccount is null (user cancelled?)');
         return false;
       }
+
+      print('[GAuth] account email: ${resolvedAccount.email}');
 
       final String? idToken = await GoogleAuthService.getIdToken(
         resolvedAccount,
@@ -108,11 +142,14 @@ class AuthCubit extends Cubit<AuthState> {
       );
 
       if (idToken == null) {
-        print('Google ID token is null');
+        print('[GAuth] idToken is null');
         return false;
       }
 
+      print('[GAuth] idToken length: ${idToken.length}');
+      print('[GAuth] calling /auth/google');
       final response = await _authRepository.loginWithGoogle(idToken);
+      print('[GAuth] /auth/google ok, user: ${response.user.email}');
 
       // 약관 동의가 필요한 경우 (임시 토큰)
       final needsTermsAgreement = response.user.agreedToTerms != true ||
@@ -120,6 +157,7 @@ class AuthCubit extends Cubit<AuthState> {
                                   response.user.agreedToSensitive != true;
 
       if (needsTermsAgreement) {
+        print('[GAuth] terms agreement required, saving temp session');
         // 임시 토큰만 저장, 로그인 상태는 false 유지
         await SessionService.saveSession(
           accessToken: response.accessToken,
@@ -156,7 +194,7 @@ class AuthCubit extends Cubit<AuthState> {
 
       return true;
     } catch (e) {
-      print('Google login error: $e');
+      print('[GAuth] Google login error: $e');
       return false;
     }
   }

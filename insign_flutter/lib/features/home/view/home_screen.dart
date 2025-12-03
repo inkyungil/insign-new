@@ -1,6 +1,9 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:insign/models/app_update_info.dart';
+import 'package:insign/data/app_update_repository.dart';
 import 'package:intl/intl.dart';
 import 'package:insign/core/constants.dart';
 import 'package:insign/data/auth_repository.dart';
@@ -9,6 +12,8 @@ import 'package:insign/data/services/session_service.dart';
 import 'package:insign/features/auth/cubit/auth_cubit.dart';
 import 'package:insign/models/contract.dart';
 import 'package:insign/models/user.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -22,6 +27,9 @@ class _HomeScreenState extends State<HomeScreen> {
   final AuthRepository _authRepository = AuthRepository();
   final DateFormat _dateFormatter = DateFormat('yyyy.MM.dd');
 
+  final AppUpdateRepository _appUpdateRepository = const AppUpdateRepository();
+  _ForceUpdateData? _forceUpdateData;
+
   List<Contract> _contracts = const [];
   bool _loading = false;
   String? _errorMessage;
@@ -34,8 +42,36 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    _checkForceUpdate();
     _loadContracts();
     _loadUserStats();
+  }
+
+  Future<void> _checkForceUpdate() async {
+    try {
+      final updateInfo = await _appUpdateRepository.fetchUpdateInfo();
+      final targetPlatform = defaultTargetPlatform;
+      final platformInfo = updateInfo.forPlatform(targetPlatform);
+      final packageInfo = await PackageInfo.fromPlatform();
+      final currentVersion = packageInfo.version;
+
+      final needsForceUpdate =
+          platformInfo.requiresForceUpdate(currentVersion.trim());
+
+      if (needsForceUpdate) {
+        if (!mounted) return;
+        setState(() {
+          _forceUpdateData = _ForceUpdateData(
+            platformInfo: platformInfo,
+            message: updateInfo.message,
+            currentVersion: currentVersion,
+          );
+        });
+        return;
+      }
+    } catch (error) {
+      debugPrint('앱 업데이트 확인 중 오류 발생: $error');
+    }
   }
 
   Future<void> _loadContracts({bool isRefresh = false}) async {
@@ -131,7 +167,6 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   List<_ContractStat> _buildStats() {
-    final total = _contracts.length;
     final drafts = _contracts.where((c) => c.status == 'draft').length;
     final active = _contracts.where((c) => c.status == 'active').length;
     final completed =
@@ -181,12 +216,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return _dateFormatter.format(date);
   }
 
-  void _showSnack(String message) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), duration: const Duration(seconds: 2)),
-    );
-  }
+
 
   Future<void> _handleCreateContract() async {
     final result = await context.push('/create-contract');
@@ -206,11 +236,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_forceUpdateData != null) {
+      return _ForceUpdateView(data: _forceUpdateData!);
+    }
     final authState = context.watch<AuthCubit>().state;
     final user = authState.user;
 
-    final displayName = (user?.displayName?.isNotEmpty ?? false)
-        ? user!.displayName!
+    final displayName = (user != null && user.displayName!.isNotEmpty)
+        ? user.displayName!
         : (user?.email?.split('@').first ?? '게스트');
 
     final welcomeSubtitle = user == null
@@ -947,6 +980,130 @@ class _StatItem extends StatelessWidget {
           ],
         ),
       ],
+    );
+  }
+}
+
+class _ForceUpdateData {
+  const _ForceUpdateData({
+    required this.platformInfo,
+    required this.message,
+    required this.currentVersion,
+  });
+
+  final PlatformUpdateInfo platformInfo;
+  final String message;
+  final String currentVersion;
+}
+
+class _ForceUpdateView extends StatelessWidget {
+  const _ForceUpdateView({required this.data});
+
+  final _ForceUpdateData data;
+
+  @override
+  Widget build(BuildContext context) {
+    final platform = defaultTargetPlatform;
+    final storeLabel = platform == TargetPlatform.iOS ? 'App Store' : 'Play 스토어';
+
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Icon(
+                Icons.system_update_alt,
+                size: 72,
+                color: primaryColor,
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                '최신 버전 업데이트 필요',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                data.message,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 15, color: Colors.black87),
+              ),
+              const SizedBox(height: 24),
+              _VersionInfoRow(
+                label: '현재 버전',
+                value: data.currentVersion,
+              ),
+              _VersionInfoRow(
+                label: '최소 지원 버전',
+                value: data.platformInfo.minimumSupportedVersion,
+              ),
+              _VersionInfoRow(
+                label: '최신 버전',
+                value: data.platformInfo.latestVersion,
+              ),
+              const SizedBox(height: 32),
+              ElevatedButton(
+                onPressed: () => _openStore(context, data.platformInfo.storeUrl),
+                style: ElevatedButton.styleFrom(
+                  minimumSize: const Size.fromHeight(52),
+                  backgroundColor: primaryColor,
+                ),
+                child: Text('$storeLabel 로 이동'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openStore(BuildContext context, String url) async {
+    final uri = Uri.tryParse(url);
+    if (uri == null) {
+      _showError(context, '스토어 링크가 올바르지 않습니다.');
+      return;
+    }
+
+    final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!launched) {
+      _showError(context, '스토어를 열 수 없습니다. 브라우저에서 직접 업데이트해 주세요.');
+    }
+  }
+
+  void _showError(BuildContext context, String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+}
+
+class _VersionInfoRow extends StatelessWidget {
+  const _VersionInfoRow({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(fontSize: 14, color: Colors.black54),
+          ),
+          Text(
+            value,
+            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -23,7 +23,15 @@ class LocalNotificationService {
     }
 
     const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
-    const initializationSettings = InitializationSettings(android: androidInit);
+    const iosInit = DarwinInitializationSettings(
+      requestAlertPermission: true,
+      requestBadgePermission: true,
+      requestSoundPermission: true,
+    );
+    const initializationSettings = InitializationSettings(
+      android: androidInit,
+      iOS: iosInit,
+    );
 
     await _plugin.initialize(initializationSettings);
 
@@ -62,7 +70,18 @@ class LocalNotificationService {
       groupKey: category.isEmpty ? null : 'insign.$category',
     );
 
-    final details = NotificationDetails(android: androidDetails);
+    final iosDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+      subtitle: categoryLabel,
+      threadIdentifier: category.isEmpty ? null : 'insign.$category',
+    );
+
+    final details = NotificationDetails(
+      android: androidDetails,
+      iOS: iosDetails,
+    );
 
     await _plugin.show(
       message.hashCode,

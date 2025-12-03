@@ -17,20 +17,40 @@ const allowedPlatforms = new Set([
 @Injectable()
 export class PushTokensService {
   private readonly logger = new Logger(PushTokensService.name);
-  private readonly googleAuth: GoogleAuth;
+  private readonly googleAuth!: GoogleAuth;
   private readonly configuredProjectId?: string;
+  private readonly initialized: boolean = false;
 
   constructor(
     @InjectRepository(UserPushToken)
     private readonly pushTokenRepository: Repository<UserPushToken>,
     private readonly configService: ConfigService,
   ) {
-    const credentials = this.loadServiceAccountCredentials();
-    this.googleAuth = new GoogleAuth({
-      credentials,
-      scopes: ["https://www.googleapis.com/auth/firebase.messaging"],
-    });
-    this.configuredProjectId = this.configService.get<string>("FCM_PROJECT_ID") ?? credentials?.project_id;
+    try {
+      const credentials = this.loadServiceAccountCredentials();
+      if (!credentials) {
+        this.logger.warn(
+          "FCM 서비스 계정이 설정되지 않았습니다. 푸시 알림이 비활성화됩니다.",
+        );
+        return;
+      }
+
+      this.googleAuth = new GoogleAuth({
+        credentials,
+        scopes: ["https://www.googleapis.com/auth/firebase.messaging"],
+      });
+
+      this.configuredProjectId =
+        this.configService.get<string>("FCM_PROJECT_ID") ??
+        credentials?.project_id;
+
+      this.initialized = true;
+      this.logger.log(
+        `FCM 초기화 완료 (프로젝트: ${this.configuredProjectId})`,
+      );
+    } catch (error) {
+      this.logger.error(`FCM 초기화 실패: ${error}`);
+    }
   }
 
   async registerToken(payload: {
@@ -140,6 +160,15 @@ export class PushTokensService {
       data?: Record<string, string>;
     },
   ) {
+    if (!this.initialized) {
+      this.logger.debug(
+        "FCM이 초기화되지 않았습니다. 푸시 전송을 처리할 수 없습니다.",
+      );
+      throw new BadRequestException(
+        "푸시 알림이 비활성화된 환경입니다. 환경 설정을 확인해 주세요.",
+      );
+    }
+
     const tokens = await this.findTokensByUserId(userId);
     if (!tokens.length) {
       throw new BadRequestException("등록된 푸시 토큰이 없습니다.");
@@ -156,44 +185,74 @@ export class PushTokensService {
     const now = new Date();
     const successes: number[] = [];
     const failures: number[] = [];
+    const invalidTokens: string[] = [];
+    let lastErrorCode: string | undefined;
 
     const url = `https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`;
 
     const results = await Promise.allSettled(
-      tokens.map((token) =>
-        authClient.request({
-          url,
-          method: "POST",
-          data: {
-            message: {
-              token: token.token,
-              notification: {
-                title: payload.title,
-                body: payload.body,
-              },
-              data: {
-                ...(payload.data ?? {}),
-                category: payload.category,
+      tokens.map(async (token) => {
+        try {
+          await authClient.request({
+            url,
+            method: "POST",
+            data: {
+              message: {
+                token: token.token,
+                notification: {
+                  title: payload.title,
+                  body: payload.body,
+                },
+                data: {
+                  ...(payload.data ?? {}),
+                  category: payload.category,
+                },
               },
             },
-          },
-        }),
-      ),
+          });
+          successes.push(token.id);
+        } catch (error: any) {
+          failures.push(token.id);
+
+          const errorCode = error?.response?.data?.error?.status;
+          lastErrorCode = errorCode ?? lastErrorCode;
+
+          this.logger.warn(
+            `푸시 전송 실패 (userId=${userId}, tokenId=${
+              token.id
+            }, token=${token.token.slice(0, 20)}...): ${errorCode ?? error}`,
+          );
+
+          if (this.isUnrecoverableError(errorCode)) {
+            invalidTokens.push(token.token);
+          }
+        }
+      }),
     );
 
-    results.forEach((result, index) => {
-      if (result.status === "fulfilled") {
-        successes.push(tokens[index].id);
-      } else {
-        failures.push(tokens[index].id);
-        this.logger.warn(
-          `푸시 전송 실패 (userId=${userId}, tokenId=${tokens[index].id}): ${result.reason}`,
-        );
-      }
-    });
+    const failureCount = results.filter((result) => result.status === "rejected")
+      .length;
+
+    if (invalidTokens.length > 0) {
+      await this.removeTokens(invalidTokens);
+      this.logger.log(
+        `${invalidTokens.length}개의 유효하지 않은 푸시 토큰을 제거했습니다.`,
+      );
+    }
 
     if (!successes.length) {
-      throw new BadRequestException("푸시 메시지 전송에 실패했습니다.");
+      if (invalidTokens.length > 0) {
+        throw new BadRequestException(
+          "유효한 푸시 토큰이 없습니다. 사용자가 앱에 다시 로그인하면 토큰이 재등록됩니다.",
+        );
+      }
+
+      const reason = lastErrorCode
+        ? ` (FCM 오류 코드: ${lastErrorCode})`
+        : "";
+      throw new BadRequestException(
+        `푸시 메시지 전송에 실패했습니다.${reason}`,
+      );
     }
 
     await this.pushTokenRepository.update(successes, { lastSeenAt: now });
@@ -201,7 +260,7 @@ export class PushTokensService {
     return {
       success: true,
       sent: successes.length,
-      failure: failures.length,
+      failure: failureCount,
     };
   }
 
@@ -211,11 +270,16 @@ export class PushTokensService {
       return undefined;
     }
 
-    const parsed = this.tryParseServiceAccount(raw);
-    if (!parsed.project_id) {
-      this.logger.warn("서비스 계정 JSON에서 project_id를 찾을 수 없습니다.");
+    try {
+      const parsed = this.tryParseServiceAccount(raw);
+      if (!parsed.project_id) {
+        this.logger.warn("서비스 계정 JSON에서 project_id를 찾을 수 없습니다.");
+      }
+      return parsed;
+    } catch (error) {
+      this.logger.error(`FCM 서비스 계정 파싱 실패: ${error}`);
+      return undefined;
     }
-    return parsed;
   }
 
   private tryParseServiceAccount(raw: string): JWTInput {
@@ -243,6 +307,20 @@ export class PushTokensService {
       }
     }
 
-    throw new BadRequestException("FCM 서비스 계정 JSON을 해석할 수 없습니다.");
+    throw new Error("FCM 서비스 계정 JSON을 파싱할 수 없습니다.");
+  }
+
+  private isUnrecoverableError(errorCode?: string): boolean {
+    if (!errorCode) {
+      return false;
+    }
+
+    const unrecoverableErrors = [
+      "NOT_FOUND",
+      "INVALID_ARGUMENT",
+      "UNREGISTERED",
+    ];
+
+    return unrecoverableErrors.includes(errorCode);
   }
 }

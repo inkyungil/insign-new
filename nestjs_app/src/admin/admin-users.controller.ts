@@ -114,24 +114,41 @@ export class AdminUsersController {
   @Post(":id/push")
   async sendPushMessage(
     @Param("id", ParseIntPipe) id: number,
-    @Body(new ValidationPipe({
-      whitelist: true,
-      forbidNonWhitelisted: true,
-      transform: true,
-    }))
-    dto: SendPushMessageDto,
+    @Body() rawBody: any,
   ) {
-    const trimmed = {
-      category: dto.category,
-      title: dto.title.trim(),
-      body: dto.body.trim(),
-    };
+    console.log('📨 Received push request:', { userId: id, body: rawBody });
 
-    if (!trimmed.title || !trimmed.body) {
-      throw new BadRequestException("제목과 메시지를 모두 입력하세요.");
+    // Manual validation since inline ValidationPipe may not work with Transform
+    if (!rawBody.category || !['general', 'contract'].includes(rawBody.category)) {
+      throw new BadRequestException('카테고리를 선택해 주세요.');
     }
 
-    await this.pushTokensService.sendPushMessage(id, trimmed);
+    const title = rawBody.title?.trim() || '';
+    const body = rawBody.body?.trim() || '';
+
+    if (!title) {
+      throw new BadRequestException('제목을 입력해 주세요.');
+    }
+
+    if (!body) {
+      throw new BadRequestException('메시지를 입력해 주세요.');
+    }
+
+    if (title.length > 120) {
+      throw new BadRequestException('제목은 120자 이하로 입력해 주세요.');
+    }
+
+    if (body.length > 500) {
+      throw new BadRequestException('메시지는 500자 이하로 입력해 주세요.');
+    }
+
+    const dto: SendPushMessageDto = {
+      category: rawBody.category,
+      title,
+      body,
+    };
+
+    await this.pushTokensService.sendPushMessage(id, dto);
     return { message: "푸시 메시지를 발송했습니다." };
   }
 }

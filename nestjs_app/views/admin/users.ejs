@@ -282,30 +282,50 @@
                 body: JSON.stringify({ category: category, title: title, body: body }),
             })
             .then(function (response) {
-                return response.json().catch(function () {
-                return { message: response.ok ? '푸시 메시지를 발송했습니다.' : '푸시 메시지 전송에 실패했습니다.' };
-                }).then(function (payload) {
-                if (pushFeedback) {
-                    pushFeedback.className = 'alert ' + (response.ok ? 'alert-success' : 'alert-danger');
-                    pushFeedback.textContent = payload.message || (response.ok ? '푸시 메시지를 발송했습니다.' : '푸시 메시지 전송에 실패했습니다.');
+                return response.json().then(function (payload) {
+                    return { ok: response.ok, status: response.status, data: payload };
+                }).catch(function () {
+                    return { ok: response.ok, status: response.status, data: null };
+                });
+            })
+            .then(function (result) {
+                var message = '';
+                if (result.ok) {
+                    message = result.data?.message || '푸시 메시지를 발송했습니다.';
                 } else {
-                    alert(payload.message || (response.ok ? '푸시 메시지를 발송했습니다.' : '푸시 메시지 전송에 실패했습니다.'));
+                    // Extract error message from validation errors or general message
+                    if (result.data?.message) {
+                        if (Array.isArray(result.data.message)) {
+                            message = result.data.message.join(', ');
+                        } else {
+                            message = result.data.message;
+                        }
+                    } else {
+                        message = '푸시 메시지 전송에 실패했습니다.';
+                    }
                 }
-                if (response.ok) {
+
+                if (pushFeedback) {
+                    pushFeedback.className = 'alert ' + (result.ok ? 'alert-success' : 'alert-danger');
+                    pushFeedback.textContent = message;
+                } else {
+                    alert(message);
+                }
+
+                if (result.ok) {
                     pushTitleInput.value = '';
                     pushBodyInput.value = '';
                     if (window.jQuery && pushModal) {
-                    setTimeout(function () { window.jQuery(pushModal).modal('hide'); }, 600);
+                        setTimeout(function () { window.jQuery(pushModal).modal('hide'); }, 600);
                     }
                 }
-                });
             })
-            .catch(function () {
+            .catch(function (error) {
                 if (pushFeedback) {
-                pushFeedback.className = 'alert alert-danger';
-                pushFeedback.textContent = '푸시 메시지 전송 중 오류가 발생했습니다.';
+                    pushFeedback.className = 'alert alert-danger';
+                    pushFeedback.textContent = '푸시 메시지 전송 중 오류가 발생했습니다: ' + (error.message || '');
                 } else {
-                alert('푸시 메시지 전송 중 오류가 발생했습니다.');
+                    alert('푸시 메시지 전송 중 오류가 발생했습니다.');
                 }
             });
             });

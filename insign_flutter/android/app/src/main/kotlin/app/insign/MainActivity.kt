@@ -1,13 +1,15 @@
 package app.insign
 
-import io.flutter.embedding.android.FlutterActivity
-import io.flutter.embedding.engine.FlutterEngine
-import io.flutter.plugin.common.MethodChannel
 import android.os.Build
+import android.os.Bundle
+import android.util.Log
 import android.widget.Toast
 import android.window.OnBackInvokedCallback
 import android.window.OnBackInvokedDispatcher
-import android.util.Log
+import androidx.core.view.WindowCompat
+import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.engine.FlutterEngine
+import io.flutter.plugin.common.MethodChannel
 
 class MainActivity: FlutterActivity() {
     private val CHANNEL = "app.back_button"
@@ -15,6 +17,12 @@ class MainActivity: FlutterActivity() {
     private val BACK_PRESSED_INTERVAL: Long = 2000 // 2초
     private var methodChannel: MethodChannel? = null
     private var backCallback: OnBackInvokedCallback? = null
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        // Let content draw behind system bars; handled via WindowInsets in Flutter side.
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+    }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
