@@ -398,6 +398,20 @@ export class ContractPdfService {
   }
 
   private async resolveSignatureTag(value: unknown): Promise<string | null> {
+    // scale 정보가 포함된 객체({ dataUrl, scale, ... })인 경우 먼저 처리
+    if (value && typeof value === "object") {
+      const record = value as Record<string, unknown>;
+      const dataUrl = await this.resolveSignatureDataUrl(record);
+      if (dataUrl) {
+        const rawScale = record.scale;
+        const numericScale =
+          typeof rawScale === "number" && Number.isFinite(rawScale)
+            ? rawScale
+            : 1;
+        return this.signatureImgTag(dataUrl, numericScale);
+      }
+    }
+
     const dataUrl = await this.resolveSignatureDataUrl(value);
     if (!dataUrl) {
       if (typeof value === "string" && value.trim().startsWith("<img")) {
@@ -565,9 +579,16 @@ export class ContractPdfService {
     }
   }
 
-  private signatureImgTag(dataUrl: string) {
+  private signatureImgTag(dataUrl: string, scale = 1) {
+    // 슬라이더에서 0.3~2.0 사이로 들어온 값을 안전 범위로 보정
+    const clampedScale = Math.min(Math.max(scale || 1, 0.3), 2);
+    const maxWidth = Math.round(220 * clampedScale);
+    const maxHeight = Math.round(120 * clampedScale);
+
+    // 서명/도장 이미지는 너무 크게 나오지 않도록
+    // 가로/세로 최대 크기를 제한하고 비율을 유지하여 축소한다.
     return `<div style="width:100%;padding:6px 0;text-align:center;">` +
-      `<img src="${dataUrl}" style="display:inline-block;width:100%;max-width:220px !important;height:auto !important;object-fit:contain;" />` +
+      `<img src="${dataUrl}" style="display:inline-block;max-width:${maxWidth}px !important;max-height:${maxHeight}px !important;width:auto !important;height:auto !important;object-fit:contain;" />` +
       `</div>`;
   }
 

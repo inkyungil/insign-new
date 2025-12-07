@@ -18,12 +18,15 @@ import 'package:insign/data/services/api_client.dart';
 import 'package:insign/data/services/session_service.dart';
 import 'package:insign/data/template_repository.dart';
 import 'package:insign/features/auth/cubit/auth_cubit.dart';
-import 'package:insign/features/templates/widgets/template_preview_modal.dart';
+import 'package:insign/features/templates/view/template_pdf_view_screen.dart';
+import 'package:insign/features/contracts/utils/html_layout_utils.dart';
 import 'package:insign/models/template_form.dart';
 import 'package:insign/models/template.dart';
 import 'package:insign/models/user.dart';
+import 'package:insign/models/signature_image_data.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:signature/signature.dart';
+import 'package:image/image.dart' as img;
 
 class CreateContractScreen extends StatefulWidget {
   final int? templateId;
@@ -62,11 +65,15 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
   final SignatureController _signatureController = SignatureController(
     penStrokeWidth: 3,
     penColor: const Color(0xFF111827),
-    exportBackgroundColor: Colors.white,
+    exportBackgroundColor: Colors.transparent, // 투명 배경
   );
   String _signatureMode = 'draw';
   Uint8List? _authorSignatureBytes;
   String? _authorSignatureSource;
+  double _signatureScale = 1.0; // 서명 크기 배율 (0.5 ~ 2.0)
+  bool _showContractPreview = false; // 계약서 미리보기 표시 여부
+  String? _activeFieldId; // A4 스타일: 현재 포커스된 필드 ID
+  final Map<String, SignatureImageData?> _signatureImages = {}; // 필드별 서명 이미지
   static const Set<String> _businessRegistrationFieldIds = {
     'businessRegistrationNumber',
     'companyBusinessNumber',
@@ -110,9 +117,69 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
 
   List<String> get _steps {
     if (_isTemplateFlow) {
-      return ['기본 정보', '계약 항목', '서명 요청 준비', '서명 요청'];
+      return ['기본 정보', '계약 항목 & 서명', '서명 요청'];
     }
     return ['기본 정보', '계약 조건', '수행자 정보', '요약'];
+  }
+
+  // 현재 Step의 필드 카운트 (채워진 개수/전체 개수)
+  String _getFieldCount() {
+    int total = 0;
+    int filled = 0;
+
+    switch (_currentStep) {
+      case 0: // 기본 정보
+        total = 3; // 계약서 제목, 갑 이름, 갑 이메일
+        if (_contractNameController.text.trim().isNotEmpty) filled++;
+        if (_clientNameController.text.trim().isNotEmpty) filled++;
+        if (_clientEmailController.text.trim().isNotEmpty) filled++;
+        if (_collectPerformerInBasicStep) {
+          total += 3; // 을 이름, 이메일, 연락처
+          if (_performerNameController.text.trim().isNotEmpty) filled++;
+          if (_performerEmailController.text.trim().isNotEmpty) filled++;
+          if (_performerContactController.text.trim().isNotEmpty) filled++;
+        }
+        break;
+      case 1: // 계약 항목 & 서명 또는 계약 조건
+        if (_isTemplateFlow) {
+          // 템플릿 필드 개수 계산
+          for (final section in _authorSections) {
+            for (final field in section.fields) {
+              total++;
+              if (field.type == 'signature') {
+                // 템플릿 signature 필드는 서명 이미지 등록 여부 기준
+                final signatureData = _signatureImages[field.id];
+                if (signatureData != null) {
+                  filled++;
+                }
+              } else {
+                final value = _templateFieldValues[field.id];
+                if (value != null && value.toString().trim().isNotEmpty) {
+                  filled++;
+                }
+              }
+            }
+          }
+        } else {
+          total = 2; // 시작일, 종료일
+          if (_startDate != null) filled++;
+          if (_endDate != null) filled++;
+        }
+        break;
+      case 2: // 서명 요청 또는 수행자 정보
+        if (_isTemplateFlow) {
+          total = 0; // 최종 확인 단계
+          filled = 0;
+        } else {
+          total = 3; // 수행자 이름, 이메일, 연락처
+          if (_performerNameController.text.trim().isNotEmpty) filled++;
+          if (_performerEmailController.text.trim().isNotEmpty) filled++;
+          if (_performerContactController.text.trim().isNotEmpty) filled++;
+        }
+        break;
+    }
+
+    return '($filled/$total)';
   }
 
   @override
@@ -782,7 +849,11 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
     if (template == null) {
       return Future.value();
     }
-    return showTemplatePreviewModal(context, template);
+    return Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => TemplatePdfViewScreen(templateId: template.id),
+      ),
+    );
   }
 
   void _goToPreviousStep() {
@@ -809,40 +880,23 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
   }
 
   Widget _buildProgressIndicator() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Row(
       children: [
-        Row(
-          children: [
-            for (int index = 0; index < _steps.length; index++) ...[
-              if (index != 0) const SizedBox(width: 8),
-              Expanded(
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 250),
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: index <= _currentStep
-                        ? primaryColor
-                        : const Color(0xFFE2E8F0),
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                ),
+        for (int index = 0; index < _steps.length; index++) ...[
+          if (index != 0) const SizedBox(width: 8),
+          Expanded(
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 250),
+              height: 4,
+              decoration: BoxDecoration(
+                color: index <= _currentStep
+                    ? primaryColor
+                    : const Color(0xFFE2E8F0),
+                borderRadius: BorderRadius.circular(999),
               ),
-            ],
-          ],
-        ),
-        const SizedBox(height: 12),
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            children: [
-              for (int index = 0; index < _steps.length; index++) ...[
-                if (index != 0) const SizedBox(width: 8),
-                _buildStepChip(index),
-              ],
-            ],
+            ),
           ),
-        ),
+        ],
       ],
     );
   }
@@ -917,23 +971,101 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
     );
   }
 
+  Widget _buildTemplateHeader() {
+    if (_template == null) return const SizedBox.shrink();
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 24),
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _template!.name,
+                      style: const TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF111827),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'General Contract',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Color(0xFF9CA3AF),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                width: 64,
+                height: 64,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF5A6C7D),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.description,
+                  color: Colors.white,
+                  size: 32,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          const Divider(height: 1, thickness: 1, color: Color(0xFFE5E7EB)),
+        ],
+      ),
+    );
+  }
+
   List<Widget> _buildStepContent() {
+    final content = <Widget>[];
+
+    // 템플릿 헤더 추가 (첫 번째 Step에만)
+    if (_currentStep == 0 && _template != null) {
+      content.add(_buildTemplateHeader());
+    }
+
     switch (_currentStep) {
       case 0:
-        return _buildBasicInfoStep();
+        content.addAll(_buildBasicInfoStep());
+        break;
       case 1:
-        return _isTemplateFlow
-            ? _buildTemplateAuthorStep()
-            : _buildContractConditionsStep();
+        if (_isTemplateFlow) {
+          // 템플릿 기반 계약: 계약 항목만 표시 (의뢰인 서명 섹션 제거)
+          content.addAll(_buildTemplateAuthorStep());
+        } else {
+          content.addAll(_buildContractConditionsStep());
+        }
+        break;
       case 2:
-        return _isTemplateFlow
-            ? _buildTemplateSignatureStep()
-            : _buildPerformerStep();
-      case 3:
-        return _buildSummaryStep();
-      default:
-        return const [];
+        content.addAll(_isTemplateFlow
+            ? _buildSummaryStep()
+            : _buildPerformerStep());
+        break;
     }
+
+    return content;
   }
 
   List<Widget> _buildBasicInfoStep() {
@@ -1080,7 +1212,8 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
             controller: _detailsController,
             label: '상세 내용',
             hint: '계약 상세 내용을 입력하세요...',
-            maxLines: 8,
+            maxLines: null, // 무제한
+            minLines: 4, // 최소 4줄 표시
           ),
         ],
       ),
@@ -1097,16 +1230,149 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
     if (_authorSections.isEmpty) {
       return [_buildTemplateEmptyCard()];
     }
-    final widgets = <Widget>[];
-    for (final section in _authorSections) {
-      widgets.add(_buildTemplateSectionCard(section));
-      widgets.add(const SizedBox(height: 16));
-    }
-    if (widgets.isNotEmpty) {
-      widgets.removeLast();
-    }
-    return widgets;
+
+    // 모든 섹션을 하나의 A4 카드 안에 표시
+    return [
+      _buildA4DocumentWrapper(
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // 모든 섹션을 순차적으로 표시
+            ...(_authorSections.asMap().entries.map((entry) {
+              final index = entry.key;
+              final section = entry.value;
+              return Column(
+                children: [
+                  if (index > 0) const SizedBox(height: 24), // 섹션 간 간격
+                  _buildTemplateSectionContent(section),
+                ],
+              );
+            }).toList()),
+
+            // 계약서 내용 미리보기
+            const SizedBox(height: 32),
+            const Divider(thickness: 2, color: Color(0xFFE5E7EB)),
+            const SizedBox(height: 24),
+            _buildContractPreviewInStep1(),
+          ],
+        ),
+      ),
+    ];
   }
+
+  /// Step 1에서 보여줄 계약서 미리보기
+  Widget _buildContractPreviewInStep1() {
+    final html = _generateFilledTemplateHtml();
+
+    if (html == null || html.trim().isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF9FAFB),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: const Color(0xFFE5E7EB)),
+        ),
+        child: Row(
+          children: [
+            const Icon(
+              Icons.info_outline,
+              size: 20,
+              color: Color(0xFF6B7280),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                '계약서 내용이 없습니다.',
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: Color(0xFF6B7280),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // 미리보기 제목
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+          decoration: const BoxDecoration(
+            color: Color(0xFFF3F5F9),
+            border: Border(
+              top: BorderSide(color: Color(0xFFD4D9E2), width: 0.5),
+              bottom: BorderSide(color: Color(0xFFD4D9E2), width: 0.5),
+            ),
+          ),
+          child: Row(
+            children: [
+              const Icon(
+                Icons.description_outlined,
+                size: 16,
+                color: Color(0xFF6B7280),
+              ),
+              const SizedBox(width: 8),
+              const Text(
+                '계약서 내용 미리보기',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF111827),
+                ),
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF59D).withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: const Text(
+                  '입력 시 자동 업데이트',
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: Color(0xFF92400E),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        // HTML 내용 + 서명 이미지 오버레이
+        _buildContractPreviewWithSignatures(html),
+      ],
+    );
+  }
+
+  Widget _buildContractPreviewWithSignatures(String html) {
+    // 서명 이미지는 HTML에 직접 삽입되므로 오버레이 없이 표시
+    return HtmlWidget(
+      html,
+      textStyle: const TextStyle(
+        fontSize: 13,
+        height: 1.6,
+        color: Color(0xFF111827),
+      ),
+      customStylesBuilder: buildContractHtmlStyles,
+    );
+  }
+
+  // 오버레이 방식은 제거됨 - 슬라이더 방식으로 변경
+
+  Widget _buildDraggableResizableImage(
+    TemplateFieldDefinition field,
+    SignatureImageData signatureData,
+  ) {
+    // 사용되지 않음 - 슬라이더 방식으로 변경됨
+    return const SizedBox.shrink();
+  }
+
+  // 드래그/리사이즈 방식은 제거됨 - 슬라이더 방식으로 대체
 
   List<Widget> _buildTemplateSignatureStep() {
     final widgets = <Widget>[
@@ -1135,12 +1401,6 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
     final widgets = <Widget>[
       _buildSummaryCard(),
     ];
-    final contractPreview = _buildContractHtmlPreview();
-    if (contractPreview != null) {
-      widgets
-        ..add(const SizedBox(height: 16))
-        ..add(contractPreview);
-    }
     if (widget.templateId != null && _authorSections.isNotEmpty) {
       widgets
         ..add(const SizedBox(height: 16))
@@ -1255,6 +1515,273 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
       icon: Icons.info_outline,
       title: '서명 요청 안내',
       message: '등록한 서명은 요약 단계에서 미리 확인할 수 있으며, 계약 저장 시 함께 전송됩니다.',
+    );
+  }
+
+  // Step 2에서 사용하는 서명 섹션 (모달 오픈 버튼)
+  Widget _buildSignatureSection() {
+    final bool hasSignature = _authorSignatureBytes != null;
+
+    return _buildSectionCard(
+      title: '의뢰인 서명',
+      icon: Icons.draw_outlined,
+      subtitle: hasSignature
+          ? '서명이 등록되었습니다. 아래 미리보기에서 크기를 조절할 수 있습니다.'
+          : '계약서에 들어갈 서명 또는 도장을 등록하세요.',
+      children: [
+        if (hasSignature) ...[
+          // 서명 미리보기 (작게)
+          Container(
+            height: 100,
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFE2E8F0)),
+            ),
+            alignment: Alignment.center,
+            padding: const EdgeInsets.all(16),
+            child: Image.memory(
+              _authorSignatureBytes!,
+              fit: BoxFit.contain,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: _showSignatureModal,
+                  icon: const Icon(Icons.edit, size: 18),
+                  label: const Text('서명 수정'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: primaryColor,
+                    side: const BorderSide(color: primaryColor),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    setState(() {
+                      _authorSignatureBytes = null;
+                      _authorSignatureSource = null;
+                      _authorSignatureAppliedAt = null;
+                      _showContractPreview = false;
+                      _signatureScale = 1.0;
+                    });
+                  },
+                  icon: const Icon(Icons.delete_outline, size: 18),
+                  label: const Text('서명 삭제'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.red,
+                    side: const BorderSide(color: Colors.red),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ] else ...[
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: _showSignatureModal,
+              icon: const Icon(Icons.edit, size: 20),
+              label: const Text('서명/도장 등록'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: primaryColor,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  // 서명 입력 모달
+  void _showSignatureModal() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        height: MediaQuery.of(context).size.height * 0.85,
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          children: [
+            // 모달 헤더
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: const BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(color: Color(0xFFE2E8F0)),
+                ),
+              ),
+              child: Row(
+                children: [
+                  const Text(
+                    '서명/도장 등록',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF111827),
+                    ),
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+                ],
+              ),
+            ),
+            // 모달 콘텐츠
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(20),
+                child: _buildAuthorSignatureSectionContent(),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // 계약서 미리보기 섹션 (서명 크기 조절 포함)
+  Widget _buildContractPreviewSection() {
+    return _buildSectionCard(
+      title: '계약서 미리보기',
+      icon: Icons.preview,
+      subtitle: '계약서에 적용될 내용을 최종 확인하세요.',
+      children: [
+        // 계약서 HTML 미리보기
+        Container(
+          width: double.infinity,
+          constraints: const BoxConstraints(maxHeight: 500),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: _buildContractPreviewContent(),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // 계약서 미리보기 콘텐츠 (HtmlWidget)
+  Widget _buildContractPreviewContent() {
+    final filledHtml = _generateFilledTemplateHtml();
+    if (filledHtml == null || filledHtml.trim().isEmpty) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(32),
+          child: Text(
+            '미리보기를 생성할 수 없습니다.',
+            style: TextStyle(
+              fontSize: 14,
+              color: Color(0xFF94A3B8),
+            ),
+          ),
+        ),
+      );
+    }
+
+    final normalized = normalizeContractHtmlLayout(filledHtml);
+
+    return HtmlWidget(
+      normalized,
+      textStyle: const TextStyle(
+        fontSize: 13,
+        height: 1.6,
+        color: Color(0xFF111827),
+      ),
+      customStylesBuilder: buildContractHtmlStyles,
+    );
+  }
+
+  // 기존 _buildAuthorSignatureSection의 내용 (모달용)
+  Widget _buildAuthorSignatureSectionContent() {
+    final bool hasSignature = _authorSignatureBytes != null;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          '서명 방법 선택',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF475569),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Container(
+          decoration: BoxDecoration(
+            color: const Color(0xFFF8FAFC),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+          ),
+          padding: const EdgeInsets.all(6),
+          child: Row(
+            children: [
+              _buildSignatureModeButton('draw', '직접 서명'),
+              const SizedBox(width: 6),
+              _buildSignatureModeButton('upload', '이미지 첨부'),
+            ],
+          ),
+        ),
+        const SizedBox(height: 20),
+        if (_signatureMode == 'draw')
+          _buildSignatureDrawPad()
+        else
+          _buildSignatureUploadPanel(),
+        if (hasSignature) ...[
+          const SizedBox(height: 20),
+          const Text(
+            '서명 미리보기',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF475569),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Container(
+            height: 140,
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFE2E8F0)),
+            ),
+            alignment: Alignment.center,
+            child: Image.memory(
+              _authorSignatureBytes!,
+              fit: BoxFit.contain,
+            ),
+          ),
+        ],
+      ],
     );
   }
 
@@ -1466,12 +1993,25 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
         _showToast('서명 이미지를 생성하지 못했습니다.', isError: true);
         return;
       }
+
+      // 이미지 리사이즈
+      final resizedData = await _resizeSignatureImage(data);
+      if (resizedData == null) {
+        _showToast('서명 이미지 처리에 실패했습니다.', isError: true);
+        return;
+      }
+
       setState(() {
-        _authorSignatureBytes = data;
+        _authorSignatureBytes = resizedData;
         _authorSignatureSource = 'draw';
         _authorSignatureAppliedAt = DateTime.now();
+        _showContractPreview = true; // 미리보기 자동 표시
       });
       _showToast('서명이 적용되었습니다.');
+      // 모달 닫기
+      if (Navigator.canPop(context)) {
+        Navigator.pop(context);
+      }
     } catch (error) {
       _showToast('서명 적용 중 오류가 발생했습니다.', isError: true);
     }
@@ -1502,15 +2042,62 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
         _showToast('2MB 이하 이미지를 선택해주세요.', isError: true);
         return;
       }
+
+      // 이미지 리사이즈
+      final resizedData = await _resizeSignatureImage(file.bytes!);
+      if (resizedData == null) {
+        _showToast('이미지 처리에 실패했습니다.', isError: true);
+        return;
+      }
+
       setState(() {
         _signatureController.clear();
-        _authorSignatureBytes = file.bytes;
+        _authorSignatureBytes = resizedData;
         _authorSignatureSource = 'upload';
         _authorSignatureAppliedAt = DateTime.now();
+        _showContractPreview = true; // 미리보기 자동 표시
       });
       _showToast('서명 이미지가 적용되었습니다.');
+      // 모달 닫기
+      if (Navigator.canPop(context)) {
+        Navigator.pop(context);
+      }
     } catch (error) {
       _showToast('이미지 업로드에 실패했습니다.', isError: true);
+    }
+  }
+
+  /// 서명 이미지를 적절한 크기로 리사이즈 (최대 400x200px)
+  Future<Uint8List?> _resizeSignatureImage(Uint8List imageBytes) async {
+    try {
+      // 이미지 디코드
+      final image = img.decodeImage(imageBytes);
+      if (image == null) {
+        return null;
+      }
+
+      // 최대 크기 설정 (서명은 가로로 긴 경우가 많으므로 400x200)
+      const maxWidth = 400;
+      const maxHeight = 200;
+
+      // 현재 크기가 이미 작으면 리사이즈 불필요
+      if (image.width <= maxWidth && image.height <= maxHeight) {
+        return imageBytes;
+      }
+
+      // 비율 유지하면서 리사이즈
+      final resized = img.copyResize(
+        image,
+        width: image.width > maxWidth ? maxWidth : null,
+        height: image.height > maxHeight ? maxHeight : null,
+        maintainAspect: true,
+      );
+
+      // PNG로 인코딩
+      return Uint8List.fromList(img.encodePng(resized));
+    } catch (error) {
+      debugPrint('서명 이미지 리사이즈 실패: $error');
+      return imageBytes; // 실패 시 원본 반환
     }
   }
 
@@ -1539,6 +2126,25 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
     if (schema != null) {
       for (final section in schema.sections) {
         for (final field in section.fields) {
+          // signature 타입 필드는 서명 이미지 또는 점선 박스 표시
+          if (field.type == 'signature') {
+            final signatureData = _signatureImages[field.id];
+            if (signatureData != null) {
+              // 서명이 등록되어 있으면 이미지 삽입
+              final dataUrl =
+                  'data:image/png;base64,${base64Encode(signatureData.imageBytes)}';
+              final scaledHeight = (80 * signatureData.scale).toInt();
+              final scaledWidth = (200 * signatureData.scale).toInt();
+              assign(field.id,
+                  '<img src="$dataUrl" style="max-height:${scaledHeight}px;max-width:${scaledWidth}px;width:auto;height:auto;object-fit:contain;display:block;" />');
+            } else {
+              // 서명이 없으면 점선 박스 표시
+              assign(field.id,
+                  '<div style="border: 2px dashed #CBD5E1; padding: 20px 40px; text-align: center; color: #94A3B8; font-size: 12px; border-radius: 4px;">서명란</div>');
+            }
+            continue; // 다음 필드로
+          }
+
           final rawValue = _templateFieldValues[field.id];
           if (rawValue != null) {
             final formatted = _formatTemplateSummaryValue(field);
@@ -1581,6 +2187,9 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
     if (_authorSignatureBytes != null) {
       final dataUrl =
           'data:image/png;base64,${base64Encode(_authorSignatureBytes!)}';
+      // 서명 크기 배율 적용
+      final scaledHeight = (80 * _signatureScale).toInt();
+      final scaledWidth = (200 * _signatureScale).toInt();
       for (final key in const [
         'clientSignatureImage',
         'clientSignature',
@@ -1592,7 +2201,7 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
         'employerSignature',
       ]) {
         assign(key,
-            '<img src="$dataUrl" style="max-height:80px;max-width:100%;object-fit:contain;" />');
+            '<img src="$dataUrl" style="max-height:${scaledHeight}px;max-width:${scaledWidth}px;width:auto;height:auto;object-fit:contain;display:block;" />');
       }
       final signedAt = _authorSignatureAppliedAt ?? DateTime.now();
       final today = _dateFormatter.format(signedAt);
@@ -1618,8 +2227,12 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
       return null;
     }
     if (value is String) {
+      // 문자열의 줄바꿈(\n)을 HTML 줄바꿈(<br>)으로 변환해 textarea 등의 개행이 미리보기/PDF에 반영되도록 처리
       final trimmed = value.trim();
-      return trimmed.isEmpty ? '' : trimmed;
+      if (trimmed.isEmpty) {
+        return '';
+      }
+      return trimmed.replaceAll('\n', '<br />');
     }
     if (value is bool) {
       return value ? '예' : '아니오';
@@ -1698,6 +2311,252 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
         ],
       ),
     );
+  }
+
+  Widget _buildSignatureField(TemplateFieldDefinition field) {
+    final signatureData = _signatureImages[field.id];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // 서명/도장 등록 버튼
+        ElevatedButton.icon(
+          onPressed: () => _showSignatureUploadOptions(field),
+          icon: const Icon(Icons.add_photo_alternate_outlined),
+          label: Text(signatureData == null ? '서명/도장 등록' : '이미지 다시 등록'),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: primaryColor,
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        ),
+
+        // 등록된 이미지가 있으면 미리보기 표시
+        if (signatureData != null) ...[
+          const SizedBox(height: 16),
+          Center(
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Image.memory(
+                signatureData.imageBytes,
+                height: 80,
+                width: 200,
+                fit: BoxFit.contain,
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  // 드래그/리사이즈 함수는 슬라이더 방식으로 대체되어 제거됨
+
+  void _showSignatureUploadOptions(TemplateFieldDefinition field) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 8),
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE2E8F0),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                '서명/도장 등록 방법',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF111827),
+                ),
+              ),
+              const SizedBox(height: 20),
+              ListTile(
+                leading: Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: primaryColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.draw, color: primaryColor),
+                ),
+                title: const Text('직접 그리기'),
+                subtitle: const Text('화면에 직접 서명을 그립니다'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showSignatureDrawDialog(field);
+                },
+              ),
+              ListTile(
+                leading: Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: primaryColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.image, color: primaryColor),
+                ),
+                title: const Text('이미지 업로드'),
+                subtitle: const Text('기존 서명/도장 이미지를 선택합니다'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _uploadSignatureImage(field);
+                },
+              ),
+              const SizedBox(height: 20),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _showSignatureDrawDialog(TemplateFieldDefinition field) async {
+    final signatureController = SignatureController(
+      penStrokeWidth: 3,
+      penColor: const Color(0xFF111827),
+      exportBackgroundColor: Colors.transparent, // 투명 배경
+    );
+
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  '서명 그리기',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF111827),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Container(
+                  height: 200,
+                  decoration: BoxDecoration(
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Signature(
+                    controller: signatureController,
+                    backgroundColor: Colors.white, // 그리는 동안만 흰 배경 (export는 투명)
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () {
+                          signatureController.clear();
+                        },
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          side: const BorderSide(color: Color(0xFFE2E8F0)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text('지우기'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          if (signatureController.isNotEmpty) {
+                            final imageBytes =
+                                await signatureController.toPngBytes();
+                            if (imageBytes != null) {
+                              setState(() {
+                                _signatureImages[field.id] = SignatureImageData(
+                                  imageBytes: imageBytes,
+                                  scale: 1.0, // 기본 크기 (100%)
+                                  source: 'draw',
+                                );
+                              });
+                              Navigator.pop(context);
+                            }
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: primaryColor,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text('완료'),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _uploadSignatureImage(TemplateFieldDefinition field) async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.image,
+        allowMultiple: false,
+      );
+
+      if (result != null && result.files.isNotEmpty) {
+        final fileBytes = result.files.first.bytes;
+        if (fileBytes != null) {
+          setState(() {
+            _signatureImages[field.id] = SignatureImageData(
+              imageBytes: fileBytes,
+              scale: 1.0, // 기본 크기 (100%)
+              source: 'upload',
+            );
+          });
+        }
+      }
+    } catch (e) {
+      Fluttertoast.showToast(
+        msg: '이미지 업로드에 실패했습니다',
+        backgroundColor: Colors.red,
+        textColor: Colors.white,
+      );
+    }
   }
 
   Widget _buildTemplateSummaryPreview() {
@@ -1813,49 +2672,37 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
     );
   }
 
-  Widget _buildTemplateSectionCard(TemplateFormSection section) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: _templateCardDecoration(),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      section.title,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF111827),
-                      ),
-                    ),
-                    if (section.description != null &&
-                        section.description!.isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 4),
-                        child: Text(
-                          section.description!,
-                          style: const TextStyle(
-                              fontSize: 13,
-                              color: Color(0xFF64748B),
-                              height: 1.4),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            ],
+  /// 섹션 내용만 렌더링 (A4 wrapper 및 헤더 제외)
+  Widget _buildTemplateSectionContent(TemplateFormSection section) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // 섹션 타이틀
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+          decoration: const BoxDecoration(
+            color: Color(0xFFF3F5F9),
+            border: Border(
+              top: BorderSide(color: Color(0xFFD4D9E2), width: 0.5),
+              bottom: BorderSide(color: Color(0xFFD4D9E2), width: 0.5),
+            ),
           ),
-          const SizedBox(height: 16),
-          for (final field in section.fields) _buildTemplateFieldRow(field),
-        ],
-      ),
+          child: Text(
+            section.title,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF111827),
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 12),
+
+        // 필드 테이블
+        _buildA4FieldsTable(section.fields),
+      ],
     );
   }
 
@@ -2005,7 +2852,11 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
       final currentValue = _templateFieldValues[field.id]?.toString();
       return DropdownButtonFormField<String>(
         value: currentValue?.isNotEmpty == true ? currentValue : null,
-        decoration: _templateInputDecoration(field.placeholder ?? '선택'),
+        decoration: _templateInputDecoration(field.placeholder ?? '선택')
+            .copyWith(
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        ),
         items: field.options
             .map(
               (option) => DropdownMenuItem<String>(
@@ -2051,24 +2902,22 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
     }
 
     if (type == 'signature') {
-      return _buildInfoNotice(
-        icon: Icons.edit_outlined,
-        title: '서명 입력 안내',
-        message: '서명 항목은 다음 단계에서 입력하거나 이미지를 첨부할 수 있도록 준비 중입니다.',
-      );
+      return _buildSignatureField(field);
     }
 
     final controller = _getTemplateTextController(field);
     TextInputType keyboardType = TextInputType.text;
+    TextInputAction? textInputAction;
     List<TextInputFormatter>? formatters;
-    int maxLines = 1;
+    int? maxLines = 1;
     int? minLines;
 
     switch (type) {
       case 'textarea':
-        maxLines = 6;
-        minLines = 4;
+        maxLines = null; // 무제한 줄 수
+        minLines = 4; // 최소 4줄 표시
         keyboardType = TextInputType.multiline;
+        textInputAction = TextInputAction.newline; // 엔터키로 줄바꿈
         break;
       case 'number':
         keyboardType =
@@ -2092,8 +2941,10 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
       maxLines: maxLines,
       minLines: minLines,
       keyboardType: keyboardType,
+      textInputAction: textInputAction, // textarea에서 엔터 가능
       inputFormatters: formatters,
       enabled: !field.readonly,
+      expands: false, // 명시적으로 설정
       decoration: _templateInputDecoration(field.placeholder ?? ''),
       onChanged: field.readonly
           ? null
@@ -2682,20 +3533,13 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
     if (html == null || html.trim().isEmpty) {
       return null;
     }
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
-        boxShadow: const [
-          BoxShadow(
-              color: Color(0x14111827), blurRadius: 12, offset: Offset(0, 8)),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
+    // A4 스타일 계약서 미리보기
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16),
+          child: Text(
             '계약서 미리보기',
             style: TextStyle(
               fontSize: 16,
@@ -2703,101 +3547,183 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
               color: Color(0xFF111827),
             ),
           ),
-          const SizedBox(height: 12),
-          Container(
-            decoration: BoxDecoration(
-              color: const Color(0xFFF8FAFC),
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: const Color(0xFFE2E8F0)),
-            ),
-            padding: const EdgeInsets.all(16),
-            child: HtmlWidget(
-              html,
-              textStyle: const TextStyle(
-                fontSize: 14,
-                height: 1.6,
-                color: Color(0xFF1F2937),
+        ),
+        const SizedBox(height: 12),
+        Container(
+          margin: const EdgeInsets.symmetric(horizontal: 16),
+          constraints: const BoxConstraints(maxWidth: 420),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 20,
+                offset: const Offset(0, 8),
               ),
-              renderMode: RenderMode.column,
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // HTML 계약서 내용
+                HtmlWidget(
+                  html,
+                  textStyle: const TextStyle(
+                    fontSize: 13,
+                    height: 1.7,
+                    color: Color(0xFF1F2937),
+                  ),
+                  renderMode: RenderMode.column,
+                  customStylesBuilder: buildContractHtmlStyles,
+                ),
+                if (_authorSignatureBytes != null) ...[
+                  const SizedBox(height: 16),
+                  const Divider(color: Color(0xFFE5E7EB)),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Icon(Icons.draw_outlined, size: 16, color: Colors.grey[600]),
+                      const SizedBox(width: 8),
+                      Text(
+                        '서명 이미지가 포함되어 있습니다',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ],
             ),
           ),
-          if (_authorSignatureBytes != null) ...[
-            const SizedBox(height: 16),
-            _buildInfoNotice(
-              icon: Icons.draw_outlined,
-              title: '의뢰인 서명',
-              message: '서명 이미지는 계약서 본문에서 직접 확인할 수 있습니다.',
-            ),
-          ],
-        ],
-      ),
+        ),
+      ],
     );
   }
 
   Widget _buildStepActionBar(BuildContext context) {
-    final bool isFirstStep = _currentStep == 0;
     final bool isLastStep = _currentStep == _steps.length - 1;
-    final EdgeInsets padding = EdgeInsets.fromLTRB(
-      16,
-      12,
-      16,
-      16 + MediaQuery.of(context).padding.bottom,
-    );
+    final bool isFirstStep = _currentStep == 0;
+    final String fieldCount = _getFieldCount();
+    final String buttonText = isLastStep
+        ? (_isTemplateFlow ? '서명 요청' : '저장')
+        : '다음 단계로 ${isLastStep ? '' : fieldCount} →';
 
     return Container(
+      width: double.infinity,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: const Color(0xFFFBBD08), // 노란색 배경
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 12,
-            offset: const Offset(0, -4),
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 8,
+            offset: const Offset(0, -2),
           ),
         ],
       ),
-      padding: padding,
-      child: Row(
-        children: [
-          if (!isFirstStep) ...[
-            Expanded(
-              child: OutlinedButton(
-                onPressed: _isSaving ? null : _goToPreviousStep,
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14)),
-                ),
-                child: const Text('이전 단계'),
-              ),
-            ),
-            const SizedBox(width: 12),
-          ],
-          Expanded(
-            child: ElevatedButton(
-              onPressed:
-                  _isSaving ? null : (isLastStep ? _handleSave : _goToNextStep),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: primaryColor,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14)),
-              ),
-              child: _isSaving
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                      ),
-                    )
-                  : Text(
-                      isLastStep ? (_isTemplateFlow ? '서명 요청' : '저장') : '다음 단계',
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: isFirstStep
+              ? ElevatedButton(
+                  onPressed: _isSaving
+                      ? null
+                      : (isLastStep ? _handleSave : _goToNextStep),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF4A5568),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 18),
+                    elevation: 0,
+                    minimumSize: const Size(double.infinity, 56),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
                     ),
-            ),
-          ),
-        ],
+                  ),
+                  child: _isSaving
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor:
+                                AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
+                        )
+                      : Text(
+                          buttonText,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                )
+              : Row(
+                  children: [
+                    Expanded(
+                      flex: 4,
+                      child: ElevatedButton.icon(
+                        onPressed: _isSaving ? null : _goToPreviousStep,
+                        icon: const Icon(Icons.arrow_back_rounded, size: 18),
+                        label: const Text(
+                          '이전 단계',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: const Color(0xFF4A5568),
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(vertical: 18),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      flex: 6,
+                      child: ElevatedButton(
+                        onPressed: _isSaving
+                            ? null
+                            : (isLastStep ? _handleSave : _goToNextStep),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF4A5568),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 18),
+                          elevation: 0,
+                          minimumSize: const Size(double.infinity, 56),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: _isSaving
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.white),
+                                ),
+                              )
+                            : Text(
+                                buttonText,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                      ),
+                    ),
+                  ],
+                ),
+        ),
       ),
     );
   }
@@ -2818,11 +3744,29 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
           _showToast('고객 이메일 형식을 확인해주세요.', isError: true);
           return false;
         }
+        if (_collectPerformerInBasicStep) {
+          final performerName = _performerNameController.text.trim();
+          final performerEmail = _performerEmailController.text.trim();
+          if (performerName.isEmpty) {
+            _showToast('수행자 이름을 입력해주세요.', isError: true);
+            return false;
+          }
+          if (performerEmail.isEmpty) {
+            _showToast('수행자 이메일을 입력해주세요.', isError: true);
+            return false;
+          }
+          if (!_isValidEmail(performerEmail)) {
+            _showToast('수행자 이메일 형식을 확인해주세요.', isError: true);
+            return false;
+          }
+        }
         return true;
       case 1:
         if (_isTemplateFlow) {
+          // 템플릿 필드 검사
           return _validateTemplateFields();
         }
+        // 일반 플로우
         if (_startDate != null &&
             _endDate != null &&
             _endDate!.isBefore(_startDate!)) {
@@ -2839,6 +3783,11 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
         }
         return true;
       case 2:
+        if (_isTemplateFlow) {
+          // 템플릿 플로우의 최종 확인 단계 (유효성 검사 불필요)
+          return true;
+        }
+        // 일반 플로우의 수행자 정보 단계
         if (_performerNameController.text.trim().isEmpty) {
           _showToast('수행자 이름을 입력해주세요.', isError: true);
           return false;
@@ -2851,15 +3800,6 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
         if (!_isValidEmail(email)) {
           _showToast('수행자 이메일 형식을 확인해주세요.', isError: true);
           return false;
-        }
-        if (_isTemplateFlow && _authorSignatureBytes == null) {
-          _showToast('의뢰인 서명을 등록해주세요.', isError: true);
-          return false;
-        }
-        return true;
-      case 3:
-        if (_isTemplateFlow) {
-          return _validateTemplateFields();
         }
         return true;
       default:
@@ -3131,6 +4071,38 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
         metadata['templateFormValues'] = _buildTemplateFormValuesPayload();
       }
 
+      // 템플릿 서명 필드에서 등록한 서명/도장 이미지도 메타데이터에 함께 저장
+      if (_signatureImages.isNotEmpty) {
+        final signatureMetadata = <String, dynamic>{};
+        _signatureImages.forEach((fieldId, data) {
+          if (data == null) return;
+          final dataUrl =
+              'data:image/png;base64,${base64Encode(data.imageBytes)}';
+          signatureMetadata[fieldId] = {
+            'dataUrl': dataUrl,
+            'scale': data.scale,
+            'source': data.source,
+          };
+        });
+        if (signatureMetadata.isNotEmpty) {
+          metadata['templateSignatureImages'] = signatureMetadata;
+        }
+
+        // 별도의 의뢰인 서명 섹션을 사용하지 않는 경우,
+        // 첫 번째 서명 이미지를 계약 작성자의 서명으로 간주하여 메타데이터에 저장
+        if (_authorSignatureBytes == null) {
+          final first = _signatureImages.values.firstWhere(
+            (value) => value != null,
+            orElse: () => null,
+          );
+          if (first != null) {
+            _authorSignatureBytes = first.imageBytes;
+            _authorSignatureSource = first.source;
+            _authorSignatureAppliedAt ??= DateTime.now();
+          }
+        }
+      }
+
       if (_authorSignatureBytes != null) {
         // 갑(계약 작성자)의 서명 정보 저장
         metadata['authorSignatureImage'] = base64Encode(_authorSignatureBytes!);
@@ -3207,35 +4179,26 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
       appBar: AppBar(
-        title: const Text(
-          '새 계약서 작성',
-          style: TextStyle(
+        title: Text(
+          _template != null ? '${_template!.name} 작성' : '새 계약서 작성',
+          style: const TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.w600,
-            color: Color(0xFF111827),
+            color: Colors.white,
           ),
         ),
-        backgroundColor: Colors.white,
+        backgroundColor: const Color(0xFF4A5568), // 어두운 회색
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.close, color: Color(0xFF111827)),
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => context.pop(),
         ),
         actions: [
-          TextButton.icon(
-            onPressed: _saveDraft,
-            icon: const Icon(Icons.save_outlined,
-                size: 18, color: Color(0xFF6B7280)),
-            label: const Text(
-              '임시 저장',
-              style: TextStyle(color: Color(0xFF6B7280), fontSize: 14),
-            ),
-          ),
           if (_template != null)
             IconButton(
               onPressed: _openTemplatePreview,
               icon: const Icon(Icons.visibility_outlined,
-                  color: Color(0xFF6B7280)),
+                  color: Colors.white),
               tooltip: '템플릿 미리보기',
             ),
         ],
@@ -3244,13 +4207,15 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
         key: _formKey,
         child: Column(
           children: [
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: _buildProgressIndicator(),
+            ),
             Expanded(
               child: ListView(
                 controller: _stepScrollController,
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
                 children: [
-                  _buildProgressIndicator(),
-                  const SizedBox(height: 24),
                   ..._buildStepContent(),
                 ],
               ),
@@ -3280,37 +4245,52 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
           ),
         ],
       ),
-      padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Icon(icon, size: 20, color: const Color(0xFF6A4C93)),
-              const SizedBox(width: 8),
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF111827),
-                ),
-              ),
-            ],
-          ),
-          if (subtitle != null) ...[
-            const SizedBox(height: 8),
-            Text(
-              subtitle,
-              style: const TextStyle(
-                fontSize: 13,
-                color: Color(0xFF64748B),
-                height: 1.4,
-              ),
+          // 어두운 회색 헤더
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            decoration: const BoxDecoration(
+              color: Color(0xFF4A5568), // 어두운 회색
+              borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
             ),
-          ],
-          const SizedBox(height: 16),
-          ...children,
+            child: Row(
+              children: [
+                Icon(icon, size: 20, color: Colors.white),
+                const SizedBox(width: 10),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // 내용 영역
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (subtitle != null) ...[
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: Color(0xFF64748B),
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+                ...children,
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -3323,7 +4303,8 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
     TextInputType? keyboardType,
     List<TextInputFormatter>? inputFormatters,
     String? Function(String?)? validator,
-    int maxLines = 1,
+    int? maxLines = 1,
+    int? minLines,
     String? suffixText,
     bool readOnly = false,
   }) {
@@ -3341,32 +4322,36 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
         const SizedBox(height: 6),
         TextFormField(
           controller: controller,
-          keyboardType: keyboardType,
+          keyboardType: keyboardType ?? ((maxLines == null || maxLines > 1) ? TextInputType.multiline : TextInputType.text),
+          textInputAction: (maxLines == null || maxLines > 1) ? TextInputAction.newline : null, // 여러 줄이면 엔터로 줄바꿈
           inputFormatters: inputFormatters,
+          onChanged: (_) => setState(() {}),
           validator: validator,
           maxLines: maxLines,
+          minLines: minLines,
           readOnly: readOnly,
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: const TextStyle(color: Color(0xFF9CA3AF)),
             suffixText: suffixText,
             filled: true,
-            fillColor: readOnly ? const Color(0xFFE5E7EB) : const Color(0xFFF9FAFB),
+            fillColor:
+                readOnly ? const Color(0xFFE5E7EB) : const Color(0xFFFEF3C7),
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 16,
               vertical: 12,
             ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+              borderSide: BorderSide.none, // 테두리 제거
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+              borderSide: BorderSide.none, // 테두리 제거
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFF6A4C93), width: 2),
+              borderSide: const BorderSide(color: Color(0xFFFBBD08), width: 2), // 노란색 포커스
             ),
             errorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
@@ -3432,6 +4417,430 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  // ==================== A4 Document Style Widgets ====================
+
+  /// A4 문서 스타일 래퍼
+  Widget _buildA4DocumentWrapper(Widget child) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      constraints: const BoxConstraints(maxWidth: 420),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: child,
+      ),
+    );
+  }
+
+  /// CONTRACT 헤더
+  Widget _buildContractDocumentHeader() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'CONTRACT',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 2,
+                    color: Color(0xFF111827),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '전자계약서 (Electronic Contract)',
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: Colors.grey[600],
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                border: Border.all(color: const Color(0xFF111827), width: 2),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: const Text(
+                'INSIGN',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.5,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        const Divider(thickness: 2, color: Color(0xFF111827)),
+        const SizedBox(height: 16),
+      ],
+    );
+  }
+
+  /// 테이블 셀 (헤더용)
+  Widget _buildA4TableCell(
+    String text, {
+    required bool isHeader,
+    bool isRequired = false,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+      color: isHeader ? const Color(0xFFF3F5F9) : null,
+      child: isHeader
+          ? Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Expanded(
+                  child: Text(
+                    text,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF111827),
+                    ),
+                  ),
+                ),
+                if (isRequired)
+                  const Padding(
+                    padding: EdgeInsets.only(left: 4),
+                    child: Text(
+                      '필수',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.red,
+                      ),
+                    ),
+                  ),
+              ],
+            )
+          : Text(
+              text,
+              style: const TextStyle(
+                fontSize: 12,
+                color: Color(0xFF111827),
+              ),
+            ),
+    );
+  }
+
+  /// 하이라이트 인라인 입력 필드 (A4 스타일)
+  Widget _buildHighlightInlineInput({
+    required TemplateFieldDefinition field,
+    required TextEditingController controller,
+    double? width,
+  }) {
+    final isActive = _activeFieldId == field.id;
+    final isFilled = controller.text.isNotEmpty;
+
+    return Container(
+      constraints: width != null ? BoxConstraints(maxWidth: width) : null,
+      child: TextField(
+        controller: controller,
+        onTap: () => setState(() => _activeFieldId = field.id),
+        onChanged: (value) {
+          _updateTemplateTextValue(field, value);
+          setState(() {});
+        },
+        readOnly: field.readonly,
+        style: const TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+          color: Color(0xFF1F2937),
+        ),
+        decoration: InputDecoration(
+          hintText: field.placeholder,
+          hintStyle: TextStyle(
+            color: const Color(0xFF1F2937).withOpacity(0.4),
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+          ),
+          filled: true,
+          fillColor: _activeFieldId == field.id
+              ? const Color(0xFFFBC02D)
+              : (isFilled
+                  ? const Color(0xFFFFF59D).withOpacity(0.7)
+                  : const Color(0xFFFFF59D)),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 12,
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
+          focusedBorder: const OutlineInputBorder(
+            borderRadius: BorderRadius.all(Radius.circular(12)),
+            borderSide: BorderSide(
+              color: Color(0xFFFBC02D),
+              width: 2,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// A4 스타일 여러 줄 입력 필드 (textarea용)
+  Widget _buildA4TextareaInput({
+    required TemplateFieldDefinition field,
+    required TextEditingController controller,
+  }) {
+    final isActive = _activeFieldId == field.id;
+    final isFilled = controller.text.isNotEmpty;
+
+    return TextField(
+      controller: controller,
+      onTap: () => setState(() => _activeFieldId = field.id),
+      onChanged: (value) {
+        _updateTemplateTextValue(field, value);
+        setState(() {});
+      },
+      readOnly: field.readonly,
+      maxLines: null,
+      minLines: 4,
+      keyboardType: TextInputType.multiline,
+      textInputAction: TextInputAction.newline,
+      style: const TextStyle(
+        fontSize: 13,
+        fontWeight: FontWeight.w600,
+        color: Color(0xFF1F2937),
+      ),
+      decoration: InputDecoration(
+        hintText: field.placeholder,
+        hintStyle: TextStyle(
+          color: const Color(0xFF1F2937).withOpacity(0.4),
+          fontSize: 13,
+          fontWeight: FontWeight.w500,
+        ),
+        filled: true,
+        fillColor: isActive
+            ? const Color(0xFFFBC02D)
+            : (isFilled
+                ? const Color(0xFFFFF59D).withOpacity(0.7)
+                : const Color(0xFFFFF59D)),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 12,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
+        focusedBorder: const OutlineInputBorder(
+          borderRadius: BorderRadius.all(Radius.circular(12)),
+          borderSide: BorderSide(
+            color: Color(0xFFFBC02D),
+            width: 2,
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// A4 스타일 템플릿 필드 테이블
+  Widget _buildA4FieldsTable(List<TemplateFieldDefinition> fields) {
+    final rows = <TableRow>[];
+
+    for (final field in fields) {
+      rows.add(
+        TableRow(
+          children: [
+            _buildA4TableCell(
+              _displayTemplateFieldLabel(field),
+              isHeader: true,
+              isRequired: field.required,
+            ),
+            Container(
+              padding: const EdgeInsets.all(8),
+              child: _buildTemplateFieldInputForA4(field),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Table(
+      border: TableBorder.all(
+        color: const Color(0xFFD4D9E2),
+        width: 0.5,
+      ),
+      columnWidths: const {
+        0: FixedColumnWidth(90),
+        1: FlexColumnWidth(),
+      },
+      children: rows,
+    );
+  }
+
+  /// A4 스타일용 템플릿 필드 입력 위젯
+  Widget _buildTemplateFieldInputForA4(TemplateFieldDefinition field) {
+    final type = field.type.toLowerCase();
+
+    // 날짜 필드는 A4 스타일 달력 위젯 사용
+    if (type == 'date') {
+      return _buildA4DateField(field);
+    }
+
+    // 주민번호, 사업자번호는 기존 위젯 사용하되 A4 스타일로
+    if (_isResidentRegistrationField(field) ||
+        _isBusinessRegistrationField(field)) {
+      return _buildTemplateFieldInput(field);
+    }
+
+    // checkbox, radio, select, signature는 기존 위젯 사용
+    if (type == 'checkbox' ||
+        type == 'radio' ||
+        type == 'select' ||
+        type == 'signature') {
+      return _buildTemplateFieldInput(field);
+    }
+
+    // 연락처 필드는 자동 하이픈 포맷터 적용
+    if (type == 'phone') {
+      final controller = _getTemplateTextController(field);
+      return TextField(
+        controller: controller,
+        keyboardType: TextInputType.phone,
+        inputFormatters: [_phoneNumberFormatter],
+        enabled: !field.readonly,
+        style: const TextStyle(fontSize: 13),
+        decoration: InputDecoration(
+          hintText: field.placeholder ?? '010-0000-0000',
+          filled: true,
+          fillColor: const Color(0xFFFFF59D),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 12,
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(
+              color: Color(0xFFFBC02D),
+              width: 2,
+            ),
+          ),
+        ),
+        onChanged: field.readonly
+            ? null
+            : (value) => _updateTemplateTextValue(field, value),
+      );
+    }
+
+    // 일반 텍스트 입력 필드 (text, textarea, email, number, currency 등)
+    if (_isTextInputField(type)) {
+      final controller = _getTemplateTextController(field);
+
+      if (type == 'textarea') {
+        // textarea는 여러 줄 입력 가능하도록 별도 위젯 사용
+        return _buildA4TextareaInput(
+          field: field,
+          controller: controller,
+        );
+      }
+
+      return _buildHighlightInlineInput(
+        field: field,
+        controller: controller,
+      );
+    }
+
+    // 기타 필드 타입은 기존 로직 사용
+    return _buildTemplateFieldInput(field);
+  }
+
+  /// A4 스타일 날짜 입력 필드
+  Widget _buildA4DateField(TemplateFieldDefinition field) {
+    final controller = _getTemplateTextController(field);
+
+    // readonly 필드인 경우 자동으로 현재 날짜 설정
+    if (field.readonly &&
+        (_templateFieldValues[field.id] == null ||
+            _templateFieldValues[field.id].toString().isEmpty)) {
+      final today = DateTime.now().toIso8601String().split('T')[0];
+      _templateFieldValues[field.id] = today;
+    }
+
+    controller.value = controller.value.copyWith(
+      text: _templateFieldValues[field.id]?.toString() ?? controller.text,
+      selection: TextSelection.fromPosition(
+        TextPosition(offset: controller.text.length),
+      ),
+    );
+
+    return InkWell(
+      onTap: field.readonly ? null : () => _pickTemplateDate(field),
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFF59D),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: Colors.transparent,
+            width: 0,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Expanded(
+              child: Text(
+                controller.text.isEmpty
+                    ? (field.placeholder ?? 'YYYY-MM-DD')
+                    : controller.text,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: controller.text.isEmpty
+                      ? const Color(0xFF9CA3AF)
+                      : const Color(0xFF111827),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Icon(
+              Icons.calendar_today,
+              size: 14,
+              color: Color(0xFF6B7280),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

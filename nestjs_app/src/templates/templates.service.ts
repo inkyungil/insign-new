@@ -4,6 +4,11 @@ import { Repository } from "typeorm";
 import { ConfigService } from "@nestjs/config";
 import { Template } from "./template.entity";
 import { TemplateFormSchema } from "./template-form.types";
+import { HtmlPdfService } from "./html-pdf.service";
+import { DocxTemplateService } from "./docx-template.service";
+import { PdfConverterService } from "./pdf-converter.service";
+import { Contract } from "../contracts/contract.entity";
+import { ContractPdfService } from "../contracts/contract-pdf.service";
 
 interface SeedTemplate {
   name: string;
@@ -22,6 +27,7 @@ export class TemplatesService {
     @InjectRepository(Template)
     private readonly templatesRepository: Repository<Template>,
     private readonly configService: ConfigService,
+    private readonly htmlPdfService: HtmlPdfService,
   ) {}
 
   async seedTemplates() {
@@ -1557,5 +1563,159 @@ export class TemplatesService {
       order: { id: "ASC" },
     });
     return byCategory?.id ?? null;
+  }
+
+  async generatePreviewPdf(templateId: number): Promise<Buffer | null> {
+    const template = await this.findOne(templateId);
+    if (!template || !template.content || !template.content.trim()) {
+      return null;
+    }
+
+    const contract = new Contract();
+    contract.id = 0;
+    contract.templateId = template.id;
+    contract.name = `${template.name} (미리보기)`;
+    contract.clientName = "샘플 갑";
+    contract.clientContact = null;
+    contract.clientEmail = null;
+    contract.performerName = "샘플 을";
+    contract.performerEmail = null;
+    contract.performerContact = null;
+    contract.startDate = null;
+    contract.endDate = null;
+    contract.amount = null;
+    contract.details = null;
+    contract.createdByUserId = null;
+    contract.signatureToken = null;
+    contract.signatureTokenExpiresAt = null;
+    contract.signatureSentAt = null;
+    contract.signatureDeclinedAt = null;
+    contract.signatureCompletedAt = null;
+    contract.signatureImage = null;
+    contract.signatureSource = null;
+    contract.status = "draft";
+    contract.usedPointsForCreation = false;
+    contract.pointsSpentForCreation = 0;
+    contract.contractsUsedBeforeCreation = null;
+    contract.contractLimitAtCreation = null;
+    contract.createdAt = new Date();
+    contract.updatedAt = new Date();
+    contract.blockchainHash = null;
+    contract.blockchainTxHash = null;
+    contract.blockchainTimestamp = null;
+    contract.blockchainNetwork = null;
+    contract.pdfFilePath = null;
+    contract.pdfHash = null;
+
+    const templateValues = this.buildPreviewPlaceholderValues(template);
+    contract.metadata = {
+      templateName: template.name,
+      templateSchemaVersion: template.formSchema?.version ?? null,
+      templateFormValues: templateValues,
+      templateRawContent: template.content,
+    };
+
+    const pdfService = new ContractPdfService(
+      this.templatesRepository,
+      new DocxTemplateService(),
+      new PdfConverterService(),
+      this.htmlPdfService,
+    );
+
+    return pdfService.generate(contract);
+  }
+
+  private buildPreviewPlaceholderValues(
+    template: Template,
+  ): Record<string, string> {
+    const result: Record<string, string> = {};
+
+    const assign = (key: string, value: unknown) => {
+      if (!key) {
+        return;
+      }
+      const normalized = this.normalizePlaceholderValue(value);
+      if (!normalized) {
+        return;
+      }
+      result[key] = normalized;
+    };
+
+    const sample = template.samplePayload;
+    if (sample) {
+      Object.entries(sample).forEach(([key, value]) => {
+        assign(key, value);
+      });
+    }
+
+    const schema = template.formSchema;
+    if (schema && Array.isArray(schema.sections)) {
+      for (const section of schema.sections) {
+        if (!section.fields) {
+          continue;
+        }
+        for (const field of section.fields) {
+          if (
+            Object.prototype.hasOwnProperty.call(result, field.id) ||
+            field.defaultValue === undefined
+          ) {
+            continue;
+          }
+          assign(field.id, field.defaultValue);
+        }
+      }
+    }
+
+    if (!result.templateName) {
+      result.templateName = template.name;
+    }
+
+    return result;
+  }
+
+  private replacePlaceholders(
+    html: string,
+    values: Record<string, string>,
+  ): string {
+    const pattern = /\{\{\s*([^}]+)\s*\}\}/g;
+    return html.replace(pattern, (_, rawKey: string) => {
+      const key = rawKey?.trim();
+      if (!key) {
+        return "";
+      }
+      return values[key] ?? "";
+    });
+  }
+
+  private normalizePlaceholderValue(value: unknown): string | null {
+    if (value === null || value === undefined) {
+      return null;
+    }
+    if (typeof value === "string") {
+      const trimmed = value.trim();
+      return trimmed.length ? trimmed : null;
+    }
+    if (typeof value === "number" || typeof value === "boolean") {
+      return String(value);
+    }
+    if (Array.isArray(value)) {
+      const parts = value
+        .map((item) => this.normalizePlaceholderValue(item))
+        .filter((item): item is string => !!item && item.length > 0);
+      if (!parts.length) {
+        return null;
+      }
+      return parts.join(", ");
+    }
+    if (typeof value === "object") {
+      const parts = Object.values(value as Record<string, unknown>)
+        .map((item) => this.normalizePlaceholderValue(item))
+        .filter((item): item is string => !!item && item.length > 0);
+      if (!parts.length) {
+        return null;
+      }
+      return parts.join(", ");
+    }
+    return String(value);
   }
 }

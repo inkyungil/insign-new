@@ -151,6 +151,11 @@ export class TemplateAdminController {
     @Body("samplePayload") rawSamplePayload: string,
     @UploadedFile() file: Express.Multer.File | undefined,
   ) {
+    // 디버깅: 받은 content 데이터 로깅
+    console.log('[DEBUG] Template Update - ID:', id);
+    console.log('[DEBUG] Content length:', bodyContent?.length ?? 0);
+    console.log('[DEBUG] Content preview:', bodyContent?.substring(0, 200) ?? 'empty');
+    console.log('[DEBUG] File uploaded:', !!file);
     const { formSchema, samplePayload } = this.parseSchemaPayload(
       rawFormSchema,
       rawSamplePayload,
@@ -207,11 +212,17 @@ export class TemplateAdminController {
       }
     }
 
+    // 디버깅: 업데이트할 payload 로깅
+    console.log('[DEBUG] Update payload content length:', updatePayload.content?.length ?? 0);
+    console.log('[DEBUG] Update payload content preview:', updatePayload.content?.substring(0, 200) ?? 'null');
+
     const updated = await this.templatesService.updateTemplate(id, updatePayload);
 
     if (!updated) {
       throw new NotFoundException("템플릿을 찾을 수 없습니다.");
     }
+
+    console.log('[DEBUG] Template updated successfully. New content length:', updated.content?.length ?? 0);
   }
 
   @Post(":id/toggle-active")

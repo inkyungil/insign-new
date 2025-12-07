@@ -14,6 +14,28 @@ String normalizeContractHtmlLayout(String htmlContent) {
     treeSanitizer: html.NodeTreeSanitizer.trusted,
   );
 
+  // contract-page, contract-box div의 width를 100%로 변경
+  for (final contractPage in wrapper.querySelectorAll('.contract-page, .contract-box')) {
+    _removeDimensionAttributes(contractPage);
+    _applyInlineStyles(contractPage, const {
+      'width': '100%',
+      'max-width': '100%',
+      'margin': '0',
+      'padding': '0',
+      'box-sizing': 'border-box',
+    });
+  }
+
+  // 모든 div를 100%로 강제 확장
+  for (final container in wrapper.querySelectorAll('div')) {
+    _removeDimensionAttributes(container);
+    _applyInlineStyles(container, const {
+      'width': '100%',
+      'max-width': '100%',
+      'box-sizing': 'border-box',
+    });
+  }
+
   for (final table in wrapper.querySelectorAll('table')) {
     _removeDimensionAttributes(table);
     _applyInlineStyles(table, const {
@@ -132,7 +154,12 @@ Map<String, String>? buildContractHtmlStyles(dom.Element element) {
       'border': '1.5px dashed #95a5a6',
       'background': '#fafafa',
       'min-height': '60px',
+      'max-height': '120px',
       'text-align': 'center',
+      'overflow': 'hidden',
+      'display': 'flex',
+      'align-items': 'center',
+      'justify-content': 'center',
     };
   }
 
@@ -285,10 +312,17 @@ void _applyInlineStyles(html.Element element, Map<String, String> updates) {
       final key = trimmed.substring(0, separatorIndex).trim().toLowerCase();
       final value = trimmed.substring(separatorIndex + 1).trim();
       if (key.isEmpty || value.isEmpty) continue;
+
+      // width와 max-width는 무시하고 updates에서 덮어쓰기
+      if (key == 'width' || key == 'max-width' || key == 'min-width') {
+        continue;
+      }
+
       styles[key] = value;
     }
   }
 
+  // updates를 강제로 적용
   updates.forEach((key, value) {
     styles[key] = value;
   });

@@ -1417,9 +1417,11 @@ class _ContractSignScreenState extends State<ContractSignScreen> {
     return Image.network(source, fit: BoxFit.contain);
   }
 
-  String? _signatureImgTag(String? url) {
+  String? _signatureImgTag(String? url, {double scale = 1.0}) {
     if (url == null || url.isEmpty) return null;
-    return '<img src="$url" style="max-height:80px;max-width:100%;object-fit:contain;" />';
+    final scaledHeight = (80 * scale).toInt();
+    final scaledWidth = (200 * scale).toInt();
+    return '<img src="$url" style="max-height:${scaledHeight}px;max-width:${scaledWidth}px;width:auto;height:auto;object-fit:contain;display:block;" />';
   }
 
   String _normalizeValue(dynamic value) {

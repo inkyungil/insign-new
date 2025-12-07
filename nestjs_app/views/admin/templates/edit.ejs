@@ -11,100 +11,145 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/suneditor@2.45.1/dist/css/suneditor.min.css" crossorigin="anonymous" />
     <style>
       .preview-frame {
-        background-color: #fefefe;
-        border: 1px solid #dcdcdc;
-        border-radius: 6px;
-        min-height: 420px;
-        padding: 24px;
+        background-color: #f5f7fa;
+        border-radius: 8px;
+        min-height: 800px;
+        padding: 40px 20px;
         font-size: 14px;
         line-height: 1.6;
         color: #222;
-        box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.02);
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+      }
+      .preview-frame > * {
+        width: 100%;
+        max-width: 800px;
+        min-height: 1000px;
+        background-color: #ffffff;
+        border: 1px solid #d0d5dd;
+        border-radius: 4px;
+        padding: 60px 80px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        font-family: 'Spoqa Han Sans Neo', 'Noto Sans KR', sans-serif;
+      }
+      .contract-doc,
+      .contract-preview-wrapper {
+        width: 100%;
+        margin: 0;
+        padding: 0;
+        background-color: transparent;
+        font-family: 'Spoqa Han Sans Neo', 'Noto Sans KR', sans-serif;
+      }
+      .preview-frame ul,
+      .preview-frame ol {
+        margin: 16px 0;
+        padding-left: 24px;
+      }
+      .preview-frame li {
+        margin-bottom: 8px;
+        line-height: 1.8;
+        color: #334155;
+      }
+      .preview-frame strong {
+        font-weight: 600;
+        color: #1e293b;
+      }
+      .contract-doc h1 {
+        font-size: 28px;
+        text-align: center;
+        letter-spacing: 0.02em;
+        margin-bottom: 40px;
+        margin-top: 20px;
+        font-weight: 700;
+        color: #1e293b;
+      }
+      .contract-doc h2 {
+        font-size: 20px;
+        margin-top: 36px;
+        margin-bottom: 16px;
+        border-bottom: 2px solid #334155;
+        padding-bottom: 8px;
+        font-weight: 600;
+        color: #1e293b;
+      }
+      .contract-doc h3 {
+        font-size: 16px;
+        margin-top: 24px;
+        margin-bottom: 12px;
+        font-weight: 600;
+        color: #334155;
+      }
+      .contract-doc p {
+        margin-bottom: 12px;
+        color: #334155;
+        font-size: 14px;
+        line-height: 1.8;
       }
       .preview-frame h1,
       .preview-frame h2,
       .preview-frame h3 {
-        margin-top: 1.2em;
-      }
-      .preview-frame .placeholder {
-        color: #c0392b;
+        color: #1e293b;
         font-weight: 600;
-      }
-      .contract-doc {
-        max-width: 780px;
-        margin: 0 auto;
-        border: 1px solid #dfe3eb;
-        border-radius: 8px;
-        padding: 32px 36px;
-        background-color: #ffffff;
-        box-shadow: 0 6px 12px rgba(15, 32, 56, 0.04);
-        font-family: 'Spoqa Han Sans Neo', 'Noto Sans KR', sans-serif;
-      }
-      .contract-doc h1,
-      .contract-doc h2,
-      .contract-doc h3 {
-        font-weight: 600;
-        color: #073b4c;
-      }
-      .contract-doc h1 {
-        font-size: 22px;
-        text-align: center;
-        letter-spacing: 0.05em;
-        margin-bottom: 28px;
-      }
-      .contract-doc h2 {
-        font-size: 18px;
-        margin-top: 28px;
-        margin-bottom: 12px;
-        border-bottom: 1px solid #e0e6ee;
-        padding-bottom: 6px;
-      }
-      .contract-doc p {
-        margin-bottom: 10px;
-        color: #23313f;
-        font-size: 14px;
-        line-height: 1.7;
       }
       .contract-table {
         width: 100%;
         border-collapse: collapse;
-        margin: 18px 0;
-        font-size: 13px;
+        margin: 24px 0;
+        font-size: 14px;
+        border: 2px solid #334155;
       }
       .contract-table th {
-        background-color: #f1f5f9;
+        background-color: #f8fafc;
+        font-weight: 600;
+        color: #1e293b;
+        text-align: left;
       }
       .contract-table th,
       .contract-table td {
-        border: 1px solid #ccd6e0;
-        padding: 8px 10px;
-        vertical-align: top;
+        border: 1px solid #cbd5e1;
+        padding: 12px 16px;
+        vertical-align: middle;
+        line-height: 1.6;
+      }
+      .contract-table tbody tr:hover {
+        background-color: #f8fafc;
       }
       .signature-block {
         display: flex;
         flex-wrap: wrap;
-        gap: 16px;
-        margin-top: 28px;
+        gap: 24px;
+        margin-top: 48px;
+        margin-bottom: 24px;
       }
       .signature-card {
-        flex: 1 1 240px;
-        border: 1px solid #ccd6e0;
-        border-radius: 6px;
-        padding: 14px 16px;
-        background-color: #fdfdfd;
+        flex: 1 1 280px;
+        border: 2px solid #cbd5e1;
+        border-radius: 8px;
+        padding: 20px 24px;
+        background-color: #f8fafc;
       }
       .signature-card h4 {
-        font-size: 14px;
-        margin-bottom: 12px;
-        color: #0f2f4a;
+        font-size: 16px;
+        margin-bottom: 16px;
+        font-weight: 600;
+        color: #1e293b;
+        border-bottom: 1px solid #cbd5e1;
+        padding-bottom: 8px;
       }
       .signature-card p {
-        margin-bottom: 8px;
-        font-size: 13px;
+        margin-bottom: 10px;
+        font-size: 14px;
+        color: #334155;
+        line-height: 1.6;
       }
       .placeholder {
-        color: #d62828;
+        color: #dc2626;
         font-weight: 600;
+        background-color: #fef2f2;
+        padding: 2px 6px;
+        border-radius: 4px;
+        border: 1px dashed #fca5a5;
       }
       .text-body {
         color: #23313f;
@@ -581,14 +626,28 @@
 
         function getEditorContent() {
           if (editorInstance && typeof editorInstance.getContents === 'function') {
-            return editorInstance.getContents(false) || '';
+            return editorInstance.getContents() || '';
           }
           return contentInput.value || '';
         }
 
         function syncContentFromEditor() {
-          if (editorInstance && typeof editorInstance.getContents === 'function') {
-            contentInput.value = editorInstance.getContents(false) || '';
+          if (editorInstance) {
+            // 코드뷰 모드에서도 정상 동작하도록 처리
+            const isCodeView = editorInstance.core?.context?.codeView?.isCodeView || false;
+
+            if (isCodeView) {
+              // 코드뷰 모드일 때는 textarea에서 직접 가져오기
+              const codeViewTextarea = document.querySelector('.se-wrapper-wysiwyg textarea');
+              if (codeViewTextarea) {
+                contentInput.value = codeViewTextarea.value || '';
+              }
+            } else if (typeof editorInstance.getContents === 'function') {
+              // 일반 모드일 때는 getContents() 사용
+              contentInput.value = editorInstance.getContents() || '';
+            }
+
+            console.log('[DEBUG] 에디터 내용 동기화:', contentInput.value.substring(0, 100));
           }
         }
 
@@ -631,7 +690,7 @@
             }
             return '<span class="text-body">' + escapeHtml(value) + '</span>';
           });
-          previewContainer.innerHTML = html;
+          previewContainer.innerHTML = '<div class="contract-preview-wrapper">' + html + '</div>';
         }
 
         function initEditor() {
@@ -708,7 +767,19 @@
           const row = document.createElement('tr');
           row.dataset.sectionIndex = String(sectionIndex);
           row.dataset.fieldIndex = String(fieldIndex);
+          const isFirst = fieldIndex === 0;
+          const isLast = fieldIndex === section.fields.length - 1;
           row.innerHTML = `
+            <td class="text-center align-middle">
+              <div class="btn-group-vertical btn-group-sm">
+                <button type="button" class="btn btn-xs btn-outline-secondary" data-action="move-field-up" ${isFirst ? 'disabled' : ''} title="위로 이동">
+                  <i class="fas fa-chevron-up"></i>
+                </button>
+                <button type="button" class="btn btn-xs btn-outline-secondary" data-action="move-field-down" ${isLast ? 'disabled' : ''} title="아래로 이동">
+                  <i class="fas fa-chevron-down"></i>
+                </button>
+              </div>
+            </td>
             <td>
               <input type="text" class="form-control form-control-sm" data-field="field-id" placeholder="예: contractTitle" />
             </td>
@@ -843,6 +914,33 @@
             renderSections();
           });
 
+          const moveUpButton = row.querySelector('[data-action="move-field-up"]');
+          const moveDownButton = row.querySelector('[data-action="move-field-down"]');
+
+          if (moveUpButton && !moveUpButton.disabled) {
+            moveUpButton.addEventListener('click', function () {
+              if (fieldIndex > 0) {
+                // Swap with previous field
+                const temp = section.fields[fieldIndex - 1];
+                section.fields[fieldIndex - 1] = section.fields[fieldIndex];
+                section.fields[fieldIndex] = temp;
+                renderSections();
+              }
+            });
+          }
+
+          if (moveDownButton && !moveDownButton.disabled) {
+            moveDownButton.addEventListener('click', function () {
+              if (fieldIndex < section.fields.length - 1) {
+                // Swap with next field
+                const temp = section.fields[fieldIndex + 1];
+                section.fields[fieldIndex + 1] = section.fields[fieldIndex];
+                section.fields[fieldIndex] = temp;
+                renderSections();
+              }
+            });
+          }
+
           return row;
         }
 
@@ -850,7 +948,7 @@
           fieldsBody.innerHTML = '';
           if (!section.fields.length) {
             const emptyRow = document.createElement('tr');
-            emptyRow.innerHTML = '<td colspan="9" class="text-center text-muted">필드를 추가하세요.</td>';
+            emptyRow.innerHTML = '<td colspan="11" class="text-center text-muted">필드를 추가하세요.</td>';
             fieldsBody.appendChild(emptyRow);
             return;
           }
@@ -906,6 +1004,7 @@
                 <table class="table table-sm table-bordered schema-fields-table mb-3">
                   <thead>
                     <tr>
+                      <th style="width: 60px" class="text-center">순서</th>
                       <th style="width: 150px">필드 키</th>
                       <th style="width: 160px">라벨</th>
                       <th style="width: 100px">타입</th>
@@ -1066,9 +1165,24 @@
         });
 
         contentInput.addEventListener('input', renderPreview);
-        templateForm.addEventListener('submit', function () {
+        templateForm.addEventListener('submit', function (e) {
+          // 폼 제출 전에 에디터 내용 동기화
           syncContentFromEditor();
           updateHiddenInputs();
+
+          // 디버깅: 실제 전송될 값 확인
+          const contentValue = contentInput.value;
+          console.log('[DEBUG] 폼 제출 - content 길이:', contentValue.length);
+          console.log('[DEBUG] 폼 제출 - content 미리보기:', contentValue.substring(0, 200));
+
+          // content가 비어있으면 경고
+          if (!contentValue || contentValue.trim().length === 0) {
+            const confirmed = confirm('본문 내용이 비어있습니다. 정말 저장하시겠습니까?');
+            if (!confirmed) {
+              e.preventDefault();
+              return false;
+            }
+          }
         });
 
         initEditor();

@@ -5,12 +5,14 @@ import {
   NotFoundException,
   Param,
   ParseIntPipe,
+  Res,
   UnauthorizedException,
 } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 import { TemplatesService } from "./templates.service";
 import { TemplateResponseDto } from "./dto/template-response.dto";
 import { JwtService } from "@nestjs/jwt";
+import { Response } from "express";
 
 @Controller("api/templates")
 @ApiTags("templates")
@@ -70,5 +72,26 @@ export class TemplatesController {
       throw new NotFoundException("템플릿을 찾을 수 없습니다.");
     }
     return TemplateResponseDto.fromEntity(template);
+  }
+
+  @Get(":id/preview-pdf")
+  async previewPdf(
+    @Headers("authorization") authorization: string | undefined,
+    @Param("id", ParseIntPipe) id: number,
+    @Res() res: Response,
+  ) {
+    await this.ensureAuthenticated(authorization);
+
+    const pdfBuffer = await this.templatesService.generatePreviewPdf(id);
+    if (!pdfBuffer) {
+      throw new NotFoundException("템플릿을 찾을 수 없습니다.");
+    }
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      'inline; filename="template-preview.pdf"',
+    );
+    res.send(pdfBuffer);
   }
 }

@@ -7,10 +7,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart';
 import 'package:intl/intl.dart';
-import 'package:printing/printing.dart';
-import 'package:universal_html/html.dart' as html;
-import 'package:universal_io/io.dart' as io;
-import 'package:url_launcher/url_launcher.dart';
 import 'package:insign/core/config/api_config.dart';
 import 'package:insign/core/constants.dart';
 import 'package:insign/data/contract_repository.dart';
@@ -20,6 +16,11 @@ import 'package:insign/features/contracts/utils/html_layout_utils.dart';
 import 'package:insign/models/blockchain_verification_result.dart';
 import 'package:insign/models/contract.dart';
 import 'package:insign/models/template_form.dart';
+import 'package:printing/printing.dart';
+import 'package:universal_html/html.dart' as html;
+import 'package:universal_io/io.dart' as io;
+import 'package:url_launcher/url_launcher.dart';
+import 'package:insign/features/contracts/view/contract_pdf_view_screen.dart';
 
 class ContractDetailScreen extends StatefulWidget {
   final int contractId;
@@ -571,6 +572,30 @@ class _ContractDetailScreenState extends State<ContractDetailScreen> {
           ),
           const SizedBox(height: 12),
           OutlinedButton.icon(
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => ContractPdfViewScreen(
+                    contractId: contract.id,
+                  ),
+                ),
+              );
+            },
+            style: OutlinedButton.styleFrom(
+              foregroundColor: primaryColor,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              minimumSize: const Size.fromHeight(52),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(18)),
+            ),
+            icon: const Icon(Icons.picture_as_pdf, size: 18),
+            label: const Text(
+              '계약서 PDF로 보기',
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+            ),
+          ),
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
             onPressed: _exportingPdf ? null : _handleDownloadPdf,
             style: OutlinedButton.styleFrom(
               foregroundColor: primaryColor,
@@ -663,10 +688,6 @@ class _ContractDetailScreenState extends State<ContractDetailScreen> {
   }
 
   Widget _buildOverviewCard(Contract contract) {
-    final period = _formatPeriod(contract.startDate, contract.endDate);
-    final amount = contract.amount?.isNotEmpty == true
-        ? _formatCurrency(contract.amount!)
-        : '-';
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: _cardDecoration(),
@@ -681,8 +702,6 @@ class _ContractDetailScreenState extends State<ContractDetailScreen> {
                 color: Color(0xFF111827)),
           ),
           const SizedBox(height: 12),
-          _InfoRow(label: '계약 기간', value: period ?? '-'),
-          _InfoRow(label: '계약 금액', value: amount == '-' ? '-' : '$amount 원'),
           _InfoRow(label: '현재 상태', value: _statusLabel(contract)),
           _InfoRow(label: '작성일', value: _formatDateTime(contract.createdAt)),
           _InfoRow(label: '최근 수정', value: _formatDateTime(contract.updatedAt)),
@@ -916,47 +935,8 @@ class _ContractDetailScreenState extends State<ContractDetailScreen> {
   }
 
   List<Widget> _buildHtmlPreviewWidgets() {
-    final html = _buildFilledTemplateHtml();
-    if (html == null || html.trim().isEmpty) {
-      return const [];
-    }
-    return [
-      const SizedBox(height: 20),
-      Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(20),
-        decoration: _cardDecoration(),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              '계약서 미리보기',
-              style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF111827)),
-            ),
-            const SizedBox(height: 12),
-            Container(
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: const Color(0xFFF8FAFC),
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
-              ),
-              padding: const EdgeInsets.all(16),
-              child: HtmlWidget(
-                html,
-                renderMode: RenderMode.column,
-                textStyle: const TextStyle(
-                    fontSize: 14, height: 1.6, color: Color(0xFF1F2937)),
-                customStylesBuilder: _htmlStylesBuilder,
-              ),
-            ),
-          ],
-        ),
-      ),
-    ];
+    // HTML 기반 계약서 미리보기는 더 이상 사용하지 않습니다.
+    return const [];
   }
 
   String? _signatureShareUrl(Contract contract) {

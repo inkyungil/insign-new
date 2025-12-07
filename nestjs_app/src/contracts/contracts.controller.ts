@@ -104,6 +104,24 @@ export class ContractsController {
     return ContractResponseDto.fromEntity(contract);
   }
 
+  @Get(":id/pdf-inline")
+  async viewPdfInline(
+    @Headers("authorization") authorization: string | undefined,
+    @Param("id", ParseIntPipe) id: number,
+    @Res() res: Response,
+  ) {
+    const userId = await this.extractUserId(authorization);
+    const contract = await this.contractsService.findOneById(id, userId);
+
+    const pdfBuffer = await this.contractPdfService.generate(contract);
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", "inline");
+    res.setHeader("Cache-Control", "no-store");
+
+    res.send(pdfBuffer);
+  }
+
   @Post(":id/verify-pdf")
   async verifyPdf(
     @Headers("authorization") authorization: string | undefined,

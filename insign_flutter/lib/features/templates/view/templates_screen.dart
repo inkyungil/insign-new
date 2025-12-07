@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:insign/core/constants.dart';
 import 'package:insign/data/template_repository.dart';
 import 'package:insign/data/services/session_service.dart';
+import 'package:insign/features/templates/view/template_pdf_view_screen.dart';
 import 'package:insign/features/templates/widgets/template_preview_modal.dart';
 import 'package:insign/models/template.dart';
 
@@ -84,7 +85,11 @@ class _TemplatesScreenState extends State<TemplatesScreen> {
   }
 
   Future<void> _handlePreview(Template template) {
-    return showTemplatePreviewModal(context, template);
+    return Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => TemplatePdfViewScreen(templateId: template.id),
+      ),
+    );
   }
 
   void _handleStartWithTemplate(Template template) {

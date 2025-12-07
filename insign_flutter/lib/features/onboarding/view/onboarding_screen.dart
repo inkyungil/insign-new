@@ -34,7 +34,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     ),
     OnboardingSlide(
       icon: Icons.flash_on_outlined,
-      title: '카톡으로 1분만에 계약 완료',
+      title: '이메일로 1분만에 계약 완료',
       description: '상대방에게 전송하고 바로 서명받을 수 있어요.',
     ),
     OnboardingSlide(

@@ -154,6 +154,18 @@ class ContractRepository {
     );
   }
 
+   Future<Uint8List> viewContractPdfInline({
+    required int id,
+    String? token,
+  }) async {
+    return ApiClient.requestBytes(
+      path: '${ApiConfig.contracts}/$id/pdf-inline',
+      method: 'GET',
+      token: token,
+      accept: 'application/pdf',
+    );
+  }
+
   Future<Uint8List> downloadContractPdfByToken({
     required String signatureToken,
   }) async {

@@ -15,6 +15,12 @@ interface ContractSignatureMail {
   senderName?: string;
 }
 
+interface ContractSignedMail {
+  to: string;
+  contractName: string;
+  viewerLink?: string;
+}
+
 interface EmailVerificationMail {
   to: string;
   verificationLink: string;
@@ -102,6 +108,42 @@ export class MailService {
     } catch (error) {
       this.logger.error("서명 요청 메일 발송 실패", error as Error);
       throw new InternalServerErrorException("메일 발송에 실패했습니다.");
+    }
+  }
+
+  async sendContractSignedMail(payload: ContractSignedMail) {
+    const user = this.configService.get<string>("SMTP_USER");
+    const fromEmail = this.configService.get<string>("SMTP_FROM") ?? user;
+
+    try {
+      const transporter = this.getTransporter();
+      await transporter.sendMail({
+        from: `"인싸인" <${fromEmail}>`,
+        to: payload.to,
+        subject: `[인싸인] ${payload.contractName} 서명이 완료되었습니다`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <p>안녕하세요,</p>
+            <p><strong>${payload.contractName}</strong> 계약서의 서명이 모두 완료되었습니다.</p>
+            ${
+              payload.viewerLink
+                ? `<p>아래 버튼을 눌러 계약서를 확인하실 수 있습니다.</p>
+                   <p><a href="${payload.viewerLink}" style="display:inline-block;padding:12px 20px;background:#4F46E5;color:#fff;border-radius:8px;text-decoration:none;">계약서 확인</a></p>`
+                : ""
+            }
+            <p style="color: #666; font-size: 14px;">
+              이 메일은 서명 완료 알림용입니다. 계약서 원본은 인싸인 서비스 내에서 확인하실 수 있습니다.
+            </p>
+            <p style="color: #999; font-size: 12px; margin-top: 30px; border-top: 1px solid #eee; padding-top: 20px;">
+              ⚠️ 본 메일은 발신 전용입니다. 회신하셔도 답변을 받으실 수 없습니다.<br />
+              문의사항이 있으시면 인싸인 앱 내 고객센터를 이용해 주세요.
+            </p>
+          </div>
+        `,
+      });
+    } catch (error) {
+      this.logger.error("서명 완료 메일 발송 실패", error as Error);
+      // 서명 자체는 완료된 상태이므로 메일 실패로 전체 플로우를 막지 않는다.
     }
   }
 

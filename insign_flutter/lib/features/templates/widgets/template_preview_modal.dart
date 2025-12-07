@@ -1,9 +1,14 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart';
 import 'package:intl/intl.dart';
 import 'package:insign/core/constants.dart';
+import 'package:insign/data/services/session_service.dart';
+import 'package:insign/data/template_repository.dart';
 import 'package:insign/models/template.dart';
 import 'package:insign/models/template_form.dart';
+import 'package:printing/printing.dart';
 
 Future<void> showTemplatePreviewModal(BuildContext context, Template template) {
   return showModalBottomSheet(
@@ -16,17 +21,62 @@ Future<void> showTemplatePreviewModal(BuildContext context, Template template) {
   );
 }
 
-class _TemplatePreviewModalContent extends StatelessWidget {
+class _TemplatePreviewModalContent extends StatefulWidget {
   final Template template;
 
   const _TemplatePreviewModalContent({required this.template});
 
+  @override
+  State<_TemplatePreviewModalContent> createState() => _TemplatePreviewModalContentState();
+}
+
+class _TemplatePreviewModalContentState extends State<_TemplatePreviewModalContent> {
   static final RegExp _placeholderPattern = RegExp(r'{{\s*([^}]+)\s*}}');
   static final DateFormat _dateFormatter = DateFormat('yyyy-MM-dd');
+
+  final TemplateRepository _repository = TemplateRepository();
+
+  Uint8List? _pdfBytes;
+  bool _loadingPdf = true;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPdf();
+  }
+
+  Future<void> _loadPdf() async {
+    setState(() {
+      _loadingPdf = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final token = await SessionService.getAccessToken();
+      final bytes = await _repository.previewTemplatePdf(
+        id: widget.template.id,
+        token: token,
+      );
+
+      if (!mounted) return;
+      setState(() {
+        _pdfBytes = bytes;
+        _loadingPdf = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = error.toString().replaceFirst('Exception: ', '');
+        _loadingPdf = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final mediaQuery = MediaQuery.of(context);
+    final template = widget.template;
     final formattedUpdatedAt = _formatUpdatedAt(template.lastUpdatedAt);
     final schemaSummary = _SchemaSummary.fromTemplate(template);
     final renderedHtml = _renderTemplateHtml(template);
@@ -99,32 +149,10 @@ class _TemplatePreviewModalContent extends StatelessWidget {
                 ),
                 const Divider(height: 1, color: Color(0xFFE2E8F0)),
                 Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (hasRenderedHtml)
-                          HtmlWidget(
-                            renderedHtml,
-                            textStyle: const TextStyle(
-                              fontSize: 14,
-                              height: 1.6,
-                              color: Color(0xFF1F2937),
-                            ),
-                            renderMode: RenderMode.column,
-                          )
-                        else
-                          const Text(
-                            '템플릿 본문이 등록되지 않았습니다.',
-                            style: TextStyle(fontSize: 14, height: 1.5, color: Color(0xFF1F2937)),
-                          ),
-                        if (schemaSummary.available) ...[
-                          const SizedBox(height: 24),
-                          _SchemaDetails(summary: schemaSummary),
-                        ],
-                      ],
-                    ),
+                  child: _buildBody(
+                    hasRenderedHtml: hasRenderedHtml,
+                    renderedHtml: renderedHtml,
+                    schemaSummary: schemaSummary,
                   ),
                 ),
                 Padding(
@@ -149,6 +177,126 @@ class _TemplatePreviewModalContent extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildBody({
+    required bool hasRenderedHtml,
+    required String? renderedHtml,
+    required _SchemaSummary schemaSummary,
+  }) {
+    if (_loadingPdf) {
+      return const Center(
+        child: CircularProgressIndicator(color: primaryColor),
+      );
+    }
+
+    if (_pdfBytes != null) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: PdfPreview(
+                build: (format) => _pdfBytes!,
+                allowPrinting: false,
+                allowSharing: false,
+                canChangePageFormat: false,
+                canChangeOrientation: false,
+              ),
+            ),
+            if (schemaSummary.available) ...[
+              const SizedBox(height: 16),
+              _SchemaDetails(summary: schemaSummary),
+            ],
+          ],
+        ),
+      );
+    }
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (_errorMessage != null) ...[
+            Container(
+              width: double.infinity,
+              margin: const EdgeInsets.only(bottom: 16),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFEF2F2),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFFECACA)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'PDF 미리보기를 불러오지 못했습니다.',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFFB91C1C),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _errorMessage!,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFFB91C1C),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      onPressed: _loadPdf,
+                      child: const Text(
+                        '다시 시도',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Color(0xFFB91C1C),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          if (hasRenderedHtml && renderedHtml != null)
+            HtmlWidget(
+              renderedHtml,
+              textStyle: const TextStyle(
+                fontSize: 14,
+                height: 1.6,
+                color: Color(0xFF1F2937),
+              ),
+              renderMode: RenderMode.column,
+              customStylesBuilder: (element) {
+                if (element.localName == 'table') {
+                  return {'width': '100%', 'table-layout': 'fixed'};
+                }
+                if (element.localName == 'th' || element.localName == 'td') {
+                  return {'word-wrap': 'break-word'};
+                }
+                return null;
+              },
+            )
+          else
+            const Text(
+              '템플릿 본문이 등록되지 않았습니다.',
+              style: TextStyle(fontSize: 14, height: 1.5, color: Color(0xFF1F2937)),
+            ),
+          if (schemaSummary.available) ...[
+            const SizedBox(height: 24),
+            _SchemaDetails(summary: schemaSummary),
+          ],
+        ],
       ),
     );
   }

@@ -106,7 +106,7 @@ class _SplashScreenState extends State<SplashScreen> {
   Future<void> _scheduleNavigation() async {
     if (_navigationScheduled) return;
     _navigationScheduled = true;
-    await Future.delayed(const Duration(seconds: 4));
+    await Future.delayed(const Duration(seconds: 2));
     final navigator = Navigator.of(context);
     if (!navigator.mounted) return;
 
